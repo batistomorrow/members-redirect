@@ -1,0 +1,33 @@
+@import 'styles/vars';
+
+.MenuBar {
+  position: fixed;
+  z-index: 10;
+  left: 0;
+  top: 0;
+  background: #fff;
+  box-shadow: 0 0 6px 1px rgba(0,0,0,.1);
+  min-width: 200px;
+  transition: all .3s ease-in-out;
+
+  top: $topBarHeight;
+  width: $menuBarWidth;
+  left: 0;
+  max-height: calc(100% - #{$topBarHeight});
+  height: 100%;
+
+  ul {
+    a, div {
+      color: #333;
+      display: block;
+      padding: .9em 0 .9em 2em;
+      border-bottom: 1px solid #e6e6e6;
+      transition: .1s;
+      font-size: 15px;
+
+      &.active {
+        background-color: rgba(0,0,0,.1);
+      }
+    }
+  }
+}

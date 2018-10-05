@@ -1,0 +1,52 @@
+.loader {
+  .loader__spinner {
+    width: 40px;
+    height: 40px;
+    position: absolute;
+    margin-top: -20px;
+    margin-left: -20px;
+    top: 50%;
+    left: 50%;
+    div {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      opacity: 0.6;
+      position: absolute;
+      top: 0;
+      left: 0;
+      -webkit-animation: bounceLoader 2.0s infinite ease-in-out;
+      animation: bounceLoader 2.0s infinite ease-in-out;
+      &:first-of-type {
+        background: black;
+      }
+      &:last-of-type {
+        -webkit-animation-delay: -1.0s;
+        animation-delay: -1.0s;
+        background: grey;
+      }
+    }
+  }
+}
+
+@-webkit-keyframes bounceLoader {
+  0%, 100% {
+    transform: scale(0.0);
+    -webkit-transform: scale(0.0);
+  }
+  50% {
+    transform: scale(1.0);
+    -webkit-transform: scale(1.0);
+  }
+}
+
+@keyframes bounceLoader {
+  0%, 100% {
+    transform: scale(0.0);
+    -webkit-transform: scale(0.0);
+  }
+  50% {
+    transform: scale(1.0);
+    -webkit-transform: scale(1.0);
+  }
+}

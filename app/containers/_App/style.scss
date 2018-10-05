@@ -1,0 +1,29 @@
+@import 'styles/mixins';
+@import 'styles/vars';
+
+.App {
+  position: relative;
+  min-height: 100vh;
+  min-width: 100vw;
+
+  > div.MainContainer {
+    position: fixed;
+    overflow: auto;
+    top: $topBarHeight;
+    width: calc(100vw - #{$menuBarWidth});
+    height: calc(100vh - #{$topBarHeight});
+    left: $menuBarWidth;
+
+    @include m(center) {
+      div {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        max-width: 520px;
+        width: 100%;
+      }
+    }
+  }
+}
