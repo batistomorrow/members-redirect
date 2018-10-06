@@ -41,6 +41,8 @@ export default class Planning extends Component {
     this.triggerFilters = this.triggerFilters.bind(this)
     this.handleBook = this.handleBook.bind(this)
     this.handleUnbook = this.handleUnbook.bind(this)
+    this.handleWait = this.handleWait.bind(this)
+    this.handleUnwait = this.handleUnwait.bind(this)
 
     moment.locale('fr')
   }
@@ -103,8 +105,12 @@ export default class Planning extends Component {
           row.bookings = []
           list.forEach(rowBook => {
             if (row.id === rowBook.get('cours').id) {
-              if (rowBook.get('client').id === user.id) {
+              if (rowBook.get('client').id === user.id && !rowBook.get('cancelled') && !rowBook.get('waiting')) {
                 row.isBooked = true
+                row.booking = rowBook
+              } else if (rowBook.get('client').id === user.id && !rowBook.get('cancelled') && rowBook.get('waiting')) {
+                row.isBooked = true
+                row.isWaiting = true
                 row.booking = rowBook
               }
 
@@ -244,6 +250,52 @@ export default class Planning extends Component {
       })
 
       toast.success("Votre réservation a bien été annulée")
+
+      that.setState({ courses })
+    })
+  }
+
+  handleWait (rowCourse) {
+    const that = this
+
+    const { courses } = that.state
+
+    const booking = new Booking()
+    booking.set('dateQueue', new Date())
+    booking.set('waiting', true)
+    booking.set('canceled', false)
+    booking.set('client', Client.createWithoutData(getItem('user').id))
+    booking.set('cours', rowCourse)
+
+    booking.save().then((myObject) => {      
+      courses.forEach(row => {
+        if (row.id === rowCourse.id) {
+          row.isBooked = true
+          row.isWaiting = true
+          row.booking = myObject
+        }
+      })
+
+      toast.success("Vous êtes maintennt en liste d'attente")
+
+      that.setState({ courses })
+    })
+  }
+
+  handleUnwait (rowCourse) {
+    const that = this
+    const { courses } = this.state
+
+    rowCourse.booking.destroy().then((myObject) => {      
+      courses.forEach(row => {
+        if (row.id === rowCourse.id) {
+          row.isBooked = false
+          row.isWaiting = false
+          delete row.booking
+        }
+      })
+
+      toast.success("Votre place en liste d'attente a bien été annulée")
 
       that.setState({ courses })
     })
@@ -398,6 +450,8 @@ export default class Planning extends Component {
                 courses={filteredCourses}
                 handleBook={this.handleBook}
                 handleUnbook={this.handleUnbook}
+                handleWait={this.handleWait}
+                handleUnwait={this.handleUnwait}
                 color={getItem('club').color}
               />
             </div>

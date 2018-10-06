@@ -135,7 +135,7 @@ class Login extends Component {
             </div>
           ) : (
             <form className={'Login__form'} onSubmit={this.handleSubmit}>
-              <label htmlFor="email">Email address</label>
+              <label htmlFor="email">Adresse e-mail</label>
               <input type="email" name="email" id="email" value={form.email} onChange={this.handleEmailChange} disabled={isCalling}/>
               {error.email && error.email.length > 0
                 ? (

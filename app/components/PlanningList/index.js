@@ -19,13 +19,36 @@ class PlanningResamaniaList extends Component {
     const { isFilterListVisible, courses } = this.props
     const { isCalling } = this.state
 
-    console.log(this)
-
     let displayCollection = courses.map(rowCourse => {
       let bookLink
 
+      // WAITING LIST ANNULER
+      // ANNULER
+
+      // WAITING LIST DONE
+      // DONE
       if (rowCourse.get('bookingEnabled') && !rowCourse.get('bookingLink')) {
-        if (rowCourse.isBooked && rowCourse.booking && moment().isBefore(moment(rowCourse.get('date')))) {
+        if (rowCourse.isBooked && rowCourse.booking && moment().isBefore(moment(rowCourse.get('date'))) && rowCourse.isWaiting && rowCourse.get('waitingListEnabled')) {
+          bookLink = (
+            <p
+              onClick={() => {this.props.handleUnwait(rowCourse)}}
+              className={`book cancel ${isCalling ? 'disabled' : null}`}
+              style={{ color: '#D00', borderColor: '#D00' }}
+            >
+              SE DÉSINSCRIRE DE LA LISTE D'ATTENTE
+            </p>
+          )
+        }  else if (moment().isBefore(moment(rowCourse.get('date'))) && rowCourse.get('bookingLimit') <= rowCourse.bookings.length && rowCourse.get('waitingListEnabled')) {
+          bookLink = (
+            <p
+              onClick={() => {this.props.handleWait(rowCourse)}}
+              className={`book cancel ${isCalling ? 'disabled' : null}`}
+              style={{ color: '#34495e', borderColor: '#34495e' }}
+            >   
+              S'INSCRIRE SUR LA LISTE D'ATTENTE
+            </p>
+          )
+        } else if (rowCourse.isBooked && rowCourse.booking && moment().isBefore(moment(rowCourse.get('date')))) {
           bookLink = (
             <p
               onClick={() => {this.props.handleUnbook(rowCourse)}}
@@ -57,7 +80,7 @@ class PlanningResamaniaList extends Component {
           bookLink = (
             <p
               className={`book ${isCalling ? 'disabled' : null}`}
-              style={{ color: this.props.color, borderColor: this.props.color, opacity: '0.4' }}
+              style={{ color: "#27ae60", borderColor: "#27ae60", opacity: '0.4' }}
             >
               RÉSERVER
             </p>
@@ -67,13 +90,15 @@ class PlanningResamaniaList extends Component {
             <p
             onClick={() => {this.props.handleBook(rowCourse)}}
               className={`book ${isCalling ? 'disabled' : null}`}
-              style={{ color: this.props.color, borderColor: this.props.color }}
+              style={{ color: "#27ae60", borderColor: "#27ae60" }}
             >
               RÉSERVER
             </p>
           )
         }
       }
+
+      // #34495e
 
       return (
         <div
