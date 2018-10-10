@@ -133,9 +133,11 @@ class PlanningResamaniaList extends Component {
               <div className={'schedules'}>
                 <p>
                   {moment(rowCourse.get('date'))
+                    .subtract(2, 'h')
                     .format('HH[h]mm')}{' '}
                   -{' '}
                   {moment(rowCourse.get('date'))
+                    .subtract(2, 'h')
                     .format('HH[h]mm')}
                 </p>
               </div>
