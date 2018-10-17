@@ -137,6 +137,7 @@ class PlanningResamaniaList extends Component {
                     .format('HH[h]mm')}{' '}
                   -{' '}
                   {moment(rowCourse.get('date'))
+                    .add(rowCourse.get('duration'), 'm')
                     .subtract(2, 'h')
                     .format('HH[h]mm')}
                 </p>
