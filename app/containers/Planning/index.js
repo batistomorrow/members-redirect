@@ -9,7 +9,7 @@ import { SingleDatePicker } from 'react-dates'
 import Ionicon from 'react-ionicons'
 
 import { getItem } from 'utils/localStorage'
-import { Club, Client, Booking, Cours, CoursTemplate } from 'utils/parse'
+import { Club, Client, Booking, Cours, CoursTemplate, Product } from 'utils/parse'
 
 import PlanningList from 'components/PlanningList'
 
@@ -202,7 +202,6 @@ export default class Planning extends Component {
   }
 
   triggerFilters () {
-    console.log('salutr')
     this.setState({
       isFilterListVisible: !this.state.isFilterListVisible,
       focused: false
@@ -212,12 +211,12 @@ export default class Planning extends Component {
   handleBook(rowCourse) {
     const that = this
 
+    // On check si il a le droit
+
     const { courses } = that.state
 
     const booking = new Booking()
     booking.set('dateBooking', new Date())
-    booking.set('dateQueue', null)
-    booking.set('dateCanceled', null)
     booking.set('waiting', false)
     booking.set('canceled', false)
     booking.set('client', Client.createWithoutData(getItem('user').id))
@@ -230,10 +229,36 @@ export default class Planning extends Component {
           row.booking = myObject
         }
       })
+    
+      const queryProductSubtract = new Parse.Query(Product)
+    
+      queryProductSubtract.equalTo('client', that.state.user)
+      queryProductSubtract.equalTo('club', that.state.club)
+      queryProductSubtract.descending('createdAt')
+      queryProductSubtract.equalTo('type', 'PRODUCT_TYPE_TICKET')
+      queryProductSubtract.greaterThanOrEqualTo('expireAt', moment().toDate())
+      queryProductSubtract.greaterThan('credit', 0)
+    
+      const queryProductSubtract2 = new Parse.Query(Product)
+    
+      queryProductSubtract2.equalTo('client', that.state.user)
+      queryProductSubtract2.equalTo('club', that.state.club)
+      queryProductSubtract2.descending('createdAt')
+      queryProductSubtract2.equalTo('type', 'PRODUCT_TYPE_TICKET')
+      queryProductSubtract2.doesNotExist('expireAt')
+      queryProductSubtract2.greaterThan('credit', 0)
+    
+      const mainQuerySubtract = Parse.Query.or(queryProductSubtract, queryProductSubtract2)
 
-      toast.success("Votre réservation a bien été acceptée")
+      mainQuerySubtract.first().then(toSubtract => {
+        toSubtract.set('credit', toSubtract.get('credit') - 1)
 
-      that.setState({ courses })
+        toSubtract.save().then(subtracted => {
+          toast.success("Votre réservation a bien été acceptée")
+
+          that.setState({ courses })
+        })
+      })
     })
   }
 
@@ -248,10 +273,36 @@ export default class Planning extends Component {
           delete row.booking
         }
       })
+    
+      const queryProductAdd = new Parse.Query(Product)
+    
+      queryProductAdd.equalTo('client', that.state.user)
+      queryProductAdd.equalTo('club', that.state.club)
+      queryProductAdd.descending('createdAt')
+      queryProductAdd.equalTo('type', 'PRODUCT_TYPE_TICKET')
+      queryProductAdd.greaterThanOrEqualTo('expireAt', moment().toDate())
+      queryProductAdd.greaterThan('credit', 0)
+    
+      const queryProductAdd2 = new Parse.Query(Product)
+    
+      queryProductAdd2.equalTo('client', that.state.user)
+      queryProductAdd2.equalTo('club', that.state.club)
+      queryProductAdd2.descending('createdAt')
+      queryProductAdd2.equalTo('type', 'PRODUCT_TYPE_TICKET')
+      queryProductAdd2.doesNotExist('expireAt')
+      queryProductAdd2.greaterThan('credit', 0)
+    
+      const mainQueryAdd = Parse.Query.or(queryProductAdd, queryProductAdd2)
+    
+      mainQueryAdd.first().then(toAdd => {
+        toAdd.set('credit', toAdd.get('credit') + 1)
 
-      toast.success("Votre réservation a bien été annulée")
+        toAdd.save().then(added => {
+          toast.success("Votre réservation a bien été annulée")
 
-      that.setState({ courses })
+          that.setState({ courses })
+        })
+      })
     })
   }
 
