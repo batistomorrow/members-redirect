@@ -10,29 +10,22 @@ class PlanningResamaniaList extends Component {
     super(props)
 
     this.state = {
-      isCalling: false,
       displayCollection: []
     }
   }
  
   render () {
-    const { isFilterListVisible, courses } = this.props
-    const { isCalling } = this.state
+    const { isFilterListVisible, courses, isFetching } = this.props
 
     let displayCollection = courses.map(rowCourse => {
       let bookLink
 
-      // WAITING LIST ANNULER
-      // ANNULER
-
-      // WAITING LIST DONE
-      // DONE
       if (rowCourse.get('bookingEnabled') && !rowCourse.get('bookingLink')) {
         if (rowCourse.isBooked && rowCourse.booking && moment().isBefore(moment(rowCourse.get('date'))) && rowCourse.isWaiting && rowCourse.get('waitingListEnabled')) {
           bookLink = (
             <p
               onClick={() => {this.props.handleUnwait(rowCourse)}}
-              className={`book cancel ${isCalling ? 'disabled' : null}`}
+              className={`book cancel ${isFetching ? 'disabled' : null}`}
               style={{ color: '#D00', borderColor: '#D00' }}
             >
               SE DÉSINSCRIRE DE LA LISTE D'ATTENTE
@@ -42,7 +35,7 @@ class PlanningResamaniaList extends Component {
           bookLink = (
             <p
               onClick={() => {this.props.handleWait(rowCourse)}}
-              className={`book cancel ${isCalling ? 'disabled' : null}`}
+              className={`book cancel ${isFetching ? 'disabled' : null}`}
               style={{ color: '#34495e', borderColor: '#34495e' }}
             >   
               S'INSCRIRE SUR LA LISTE D'ATTENTE
@@ -52,7 +45,7 @@ class PlanningResamaniaList extends Component {
           bookLink = (
             <p
               onClick={() => {this.props.handleUnbook(rowCourse)}}
-              className={`book cancel ${isCalling ? 'disabled' : null}`}
+              className={`book cancel ${isFetching ? 'disabled' : null}`}
               style={{ color: '#D00', borderColor: '#D00' }}
             >
               ANNULER
@@ -61,7 +54,7 @@ class PlanningResamaniaList extends Component {
         } else if (rowCourse.isBooked && rowCourse.booking && moment().isAfter(moment(rowCourse.get('date')))) {
           bookLink = (
             <p
-              className={`book cancel ${isCalling ? 'disabled' : null}`}
+              className={`book cancel ${isFetching ? 'disabled' : null}`}
               style={{ color: '#D00', borderColor: '#D00', opacity: '0.4' }}
             >
               ANNULER
@@ -70,7 +63,7 @@ class PlanningResamaniaList extends Component {
         } else if (rowCourse.get('bookingLimit') <= rowCourse.bookings.length) {
           bookLink = (
             <p
-              className={`book cancel ${isCalling ? 'disabled' : null}`}
+              className={`book cancel ${isFetching ? 'disabled' : null}`}
               style={{ color: '#D00', borderColor: '#D00' }}
             >
               COMPLET
@@ -79,7 +72,7 @@ class PlanningResamaniaList extends Component {
         } else if (moment().isAfter(moment(rowCourse.get('date'))) || moment().isBefore(moment(rowCourse.get('dateBookingOpened'))) || moment().isAfter(moment(rowCourse.get('dateBookingClosed')))) {
           bookLink = (
             <p
-              className={`book ${isCalling ? 'disabled' : null}`}
+              className={`book ${isFetching ? 'disabled' : null}`}
               style={{ color: "#27ae60", borderColor: "#27ae60", opacity: '0.4' }}
             >
               RÉSERVER
@@ -89,7 +82,7 @@ class PlanningResamaniaList extends Component {
           bookLink = (
             <p
             onClick={() => {this.props.handleBook(rowCourse)}}
-              className={`book ${isCalling ? 'disabled' : null}`}
+              className={`book ${isFetching ? 'disabled' : null}`}
               style={{ color: "#27ae60", borderColor: "#27ae60" }}
             >
               RÉSERVER
@@ -157,7 +150,7 @@ class PlanningResamaniaList extends Component {
       )
     })
 
-    return !isCalling ? (
+    return !isFetching ? (
       <div
         className="PlanningResamania_list"
         style={{ paddingTop: isFilterListVisible ? '0' : '104px' }}
