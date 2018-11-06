@@ -30,7 +30,7 @@ class App extends Component {
             <React.Fragment>
               <TopBar title={this.props.location.pathname.replace('/', '')} />
 
-              <MenuBar />
+              {/* <MenuBar /> */}
 
               <Switch>
                 {routes.map((route, index) => (

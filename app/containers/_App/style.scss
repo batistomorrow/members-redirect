@@ -10,9 +10,10 @@
     position: fixed;
     overflow: auto;
     top: $topBarHeight;
-    width: calc(100vw - #{$menuBarWidth});
     height: calc(100vh - #{$topBarHeight});
-    left: $menuBarWidth;
+    // width: calc(100vw - #{$menuBarWidth});
+    // left: $menuBarWidth;
+    width: 100%;
 
     @include m(center) {
       div {
