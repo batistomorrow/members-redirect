@@ -14,12 +14,12 @@ class SignIn extends Component {
 
     this.state = {
       form: {
-        firstname: 'Paul',
-        lastname: 'Test',
-        email: 'paul@test.com',
-        phone: '0607080910',
+        firstname: '',
+        lastname: '',
+        email: '',
+        phone: '',
         gender: 'Homme',
-        birthdate: '2018-01-01'
+        birthdate: ''
       },
       isCalling: false,
       clubs: []
