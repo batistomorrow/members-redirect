@@ -1,5 +1,5 @@
 import React from 'react'
-import { Home, Notifications, Planning, Settings } from 'containers'
+import { Home, Notifications, Planning, Settings, Login, SignIn } from 'containers'
 
 export const routes = [
   {
@@ -8,6 +8,18 @@ export const routes = [
     exact: true,
     position: 'top',
     component: () => <Home />
+  },
+  {
+    path: '/login',
+    name: 'Connexion',
+    exact: true,
+    component: () => <Login />
+  },
+  {
+    path: '/signin',
+    name: 'Créer un compte',
+    exact: true,
+    component: () => <SignIn />
   },
   {
     path: '/planning',
