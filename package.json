@@ -50,8 +50,8 @@
     "react-dom": "^16.5.2",
     "react-ionicons": "^2.1.6",
     "react-redux-loading-bar": "^4.0.8",
-    "react-router": "^4.3.1",
-    "react-router-dom": "^4.3.1",
+    "react-router": "4.3.1",
+    "react-router-dom": "4.3.1",
     "react-toastify": "^4.4.0",
     "window-or-global": "^1.0.1"
   }

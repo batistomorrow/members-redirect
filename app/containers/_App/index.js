@@ -49,15 +49,15 @@ class App extends Component {
             <Switch>
               <Route
                 path={'/signin'}
-                exact={true}
                 component={() => <SignIn/>}
               />
 
               <Route
                 path={'/login'}
-                exact={true}
                 component={() => <Login/>}
               />
+
+              <Route component={() => <Login/>} />
             </Switch>
           )
         }
