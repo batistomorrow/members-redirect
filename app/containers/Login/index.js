@@ -146,6 +146,8 @@ class Login extends Component {
             </form>
           )
         }
+
+        <div className="Login__create"><a href="/signin">Créer un compte</a></div>
       </div>
     )
   }

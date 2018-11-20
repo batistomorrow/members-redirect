@@ -5,7 +5,7 @@ import { withRouter } from 'react-router'
 import { routes } from 'routes'
 import { isLoggedIn } from 'utils/user'
 
-import { Login, NotFound } from 'containers'
+import { Login, NotFound, SignIn } from 'containers'
 import TopBar from 'components/TopBar'
 import MenuBar from 'components/MenuBar'
 
@@ -46,7 +46,21 @@ class App extends Component {
               </Switch>
             </React.Fragment>
           ) : (
-            <Login />
+            <Switch>
+              <Route
+                path={'/login'}
+                exact={true}
+                component={() => <Login/>}
+              />
+
+              <Route
+                path={'/signin'}
+                exact={true}
+                component={() => <SignIn/>}
+              />
+                
+              <Route component={() => <Login/>} />
+            </Switch>
           )
         }
       </div>

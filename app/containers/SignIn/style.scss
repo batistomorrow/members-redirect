@@ -1,6 +1,6 @@
 @import 'styles/mixins';
 
-.Login {
+.SignIn {
   position: absolute;
   top: 50%;
   left: 50%;
@@ -38,6 +38,7 @@
     label {
       text-align: left;
       font-weight: 300;
+      margin-top: 1em;
     }
 
     .error {
@@ -46,7 +47,7 @@
       color: red;
     }
 
-    input[type="email"] {
+    input, select {
       padding: 8px;
       width: 100%;
       border: 1px solid #e6e6e6;
@@ -90,15 +91,6 @@
         display: block;
         font-size: 12px;
       }
-    }
-  }
-
-  @include e(create) {
-    margin-top: 24px;
-    
-    a {
-      text-decoration: underline;
-      color: #3498db;
     }
   }
 }
