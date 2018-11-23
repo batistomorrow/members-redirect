@@ -1,14 +1,14 @@
 import React from 'react'
-import { Home, Notifications, Planning, Settings, Login, SignIn } from 'containers'
+import { Home, Notifications, Bookings, Planning, Settings, Login, SignIn } from 'containers'
 
 export const routes = [
-  {
-    path: '/home',
-    name: 'Accueil',
-    exact: true,
-    position: 'top',
-    component: () => <Home />
-  },
+  // {
+  //   path: '/home',
+  //   name: 'Accueil',
+  //   exact: true,
+  //   position: 'top',
+  //   component: () => <Home />
+  // },
   {
     path: '/login',
     name: 'Connexion',
@@ -28,18 +28,25 @@ export const routes = [
     position: 'top',
     component: () => <Planning />
   },
+  // {
+  //   path: '/notifications',
+  //   name: 'Notifications',
+  //   exact: true,
+  //   position: 'top',
+  //   component: () => <Notifications />
+  // },
   {
-    path: '/notifications',
-    name: 'Notifications',
+    path: '/bookings',
+    name: 'Réservations',
     exact: true,
     position: 'top',
-    component: () => <Notifications />
+    component: () => <Bookings />
   },
-  {
-    path: '/settings',
-    name: 'Paramètres',
-    exact: true,
-    position: 'bottom',
-    component: () => <Settings />
-  }
+  // {
+  //   path: '/settings',
+  //   name: 'Paramètres',
+  //   exact: true,
+  //   position: 'bottom',
+  //   component: () => <Settings />
+  // }
 ]

@@ -21,9 +21,9 @@ class TopBar extends Component {
   render () {
     return (
       <div className="TopBar">
-        <div className="logout" onClick={this.handleLogout}>
+        {/* <div className="logout" onClick={this.handleLogout}>
           Déconnexion
-        </div>
+        </div> */}
         <h1>{this.props.title.toUpperCase()}</h1>
       </div>
     )

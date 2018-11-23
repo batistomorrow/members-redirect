@@ -12,8 +12,8 @@
     z-index: 12;
     top: $topBarHeight;
     height: 54px;
-    // width: calc(100vw - #{$menuBarWidth});
-    width: 100%;
+    width: calc(100vw - #{$menuBarWidth});
+    // width: 100%;
     box-shadow: 0 0 6px 1px rgba(0, 0, 0, 0.2);
 
     .Planning_topBar--goBack {
@@ -54,7 +54,7 @@
     box-shadow: 0 0 6px 1px rgba(0, 0, 0, 0.2);
     background-color: white;
     text-align: center;
-    // max-width: calc(100vw - #{$menuBarWidth});
+    max-width: calc(100vw - #{$menuBarWidth});
 
     .Planning_dateBar--arrow-back {
       position: absolute;
@@ -92,8 +92,8 @@
     position: fixed;
     top: 112px;
     z-index: 9;
-    width: 100%;
-    // width: calc(100vw - #{$menuBarWidth});
+    // width: 100%;
+    width: calc(100vw - #{$menuBarWidth});
     background-color: white;
     box-shadow: 0 0 6px 1px rgba(0, 0, 0, 0.2);
 

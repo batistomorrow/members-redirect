@@ -17,8 +17,6 @@ import './style.scss'
 class App extends Component {
   constructor(props) {
     super(props)
-
-    console.log(this)
   }
 
   render() {
@@ -30,7 +28,7 @@ class App extends Component {
             <React.Fragment>
               <TopBar title={this.props.location.pathname.replace('/', '')} />
 
-              {/* <MenuBar /> */}
+              <MenuBar />
 
               <Switch>
                 {routes.map((route, index) => (

@@ -11,9 +11,9 @@
     overflow: auto;
     top: $topBarHeight;
     height: calc(100vh - #{$topBarHeight});
-    // width: calc(100vw - #{$menuBarWidth});
-    // left: $menuBarWidth;
-    width: 100%;
+    width: calc(100vw - #{$menuBarWidth});
+    left: $menuBarWidth;
+    // width: 100%;
 
     @include m(center) {
       div {
