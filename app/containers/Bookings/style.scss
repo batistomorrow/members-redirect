@@ -44,6 +44,10 @@
       > div {
         padding: 12px;
         border: 1px solid;
+
+        &:not(:first-child) {
+          margin-top: 12px;
+        }
       }
     }
   }

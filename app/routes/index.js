@@ -2,13 +2,12 @@ import React from 'react'
 import { Home, Notifications, Bookings, Planning, Settings, Login, SignIn } from 'containers'
 
 export const routes = [
-  // {
-  //   path: '/home',
-  //   name: 'Accueil',
-  //   exact: true,
-  //   position: 'top',
-  //   component: () => <Home />
-  // },
+  {
+    path: '/',
+    name: 'Planning',
+    exact: true,
+    component: () => <Planning />
+  },
   {
     path: '/login',
     name: 'Connexion',

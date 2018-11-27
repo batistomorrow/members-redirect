@@ -37,6 +37,7 @@ class Bookings extends React.Component {
 
       queryProduct.limit(100)
       queryProduct.equalTo('club', club).equalTo('client', user)
+      queryProduct.include('template')
 
       queryProduct.find().then(products => {
         that.setState({ bookings, products })
@@ -84,7 +85,7 @@ class Bookings extends React.Component {
               <div
                 key={r.id}
               >
-                <p style={{ float: 'left' }}>{name}</p>
+                <p style={{ float: 'left' }}>{name} - {r.get('credit')} crédits restants</p>
                 <p style={{ float: 'right' }}>
                   {moment(r.get('expireAt')).format('L')}
                 </p>
@@ -97,7 +98,7 @@ class Bookings extends React.Component {
             <div
               key={r.id}
             >
-              <p style={{ float: 'left' }}>{name}</p>
+              <p style={{ float: 'left' }}>{name} - {r.get('credit')} crédits restants</p>
               <div style={{clear: 'both'}}></div>
             </div>
           )
@@ -108,7 +109,7 @@ class Bookings extends React.Component {
             (r && moment(r.get('expireAt')).isBefore(moment())) ||
             (r && r.get('credit') <= 0)
           ) {
-            pastTickets(
+            pastTickets.push(
               <div
                 key={r.id}
                 className='item past'
@@ -122,7 +123,7 @@ class Bookings extends React.Component {
             )
           }
         } else if (r && !r.get('expireAt') && r.get('credit') <= 0) {
-          pastTickets(
+          pastTickets.push(
             <div
               key={r.id}
               className='item past'
