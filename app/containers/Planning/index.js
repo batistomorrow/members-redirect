@@ -219,12 +219,16 @@ export default class Planning extends Component {
 
       const { courses } = that.state
 
+      console.log(rowCourse)
+
       const booking = new Booking()
       booking.set('dateBooking', new Date())
       booking.set('waiting', false)
       booking.set('canceled', false)
       booking.set('client', Client.createWithoutData(getItem('user').id))
       booking.set('cours', rowCourse)
+      booking.set('courseName', rowCourse.get('name'))
+      booking.set('dateCourse', rowCourse.get('date'))
 
       booking.save().then((myObject) => {      
         courses.forEach(row => {
