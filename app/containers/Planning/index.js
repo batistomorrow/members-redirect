@@ -73,8 +73,15 @@ export default class Planning extends Component {
           return row.get('name')
         })
 
+        const initialRoom = club.get('initialRoom')
+        const rooms = club.get('classesRooms')
+
         that.setState({
-          rooms: club.get('classesRooms'),
+          rooms: rooms,
+          filters: {
+            room: initialRoom && Number.isInteger(initialRoom) ? rooms[initialRoom] : 'Toutes',
+            concept: 'Tous'
+          },
           concepts
         }, () => that.getCourses())
       })
