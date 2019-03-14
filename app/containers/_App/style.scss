@@ -28,3 +28,42 @@
     }
   }
 }
+
+@media screen and (max-width: 780px) {
+  .App {  
+    > div.MainContainer {
+      position: fixed;
+      overflow: auto;
+      top: 0;
+      height: calc(100vh);
+      width: calc(100vw);
+      left: 0;
+      width: 100%;
+    }
+
+    .TopBar {
+      display: none;
+    }
+
+    .MenuBar {
+      display: none;
+    }
+
+    .Planning_dateBar, .Planning_topBar {
+      max-width: 100% !important;
+      width: 100% !important;
+    }
+
+    .Planning_topBar {
+      top: 0 !important;
+    }
+    .Planning_dateBar {
+      top: 54px !important;
+    }
+
+    .Planning_filters {
+      top: 52px !important;
+      width: 100% !important;
+    }
+  }
+}
