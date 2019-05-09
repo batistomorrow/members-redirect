@@ -18,7 +18,6 @@ export const removeItem = key => root.localStorage.removeItem(key)
 
 export const getItem = key => {
   const content = localStorage.getItem(key)
-  
   try {
     return JSON.parse(content)
   } catch (e) {

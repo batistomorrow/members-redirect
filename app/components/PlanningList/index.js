@@ -6,93 +6,108 @@ import Loader from 'components/Loader'
 import './style.scss'
 
 class PlanningResamaniaList extends Component {
-  constructor (props) {
+
+  constructor(props) {
+
     super(props)
 
     this.state = {
       displayCollection: []
     }
+    this.bookingButton = this.bookingButton.bind(this)
   }
- 
-  render () {
+
+  bookingButton(rowCourse) {
+
     const { isFilterListVisible, courses, isFetching } = this.props
+    const user = JSON.parse(localStorage.getItem('user'))
+    let booked = false
+    let waiting = false
+    let bookings = rowCourse.bookings
 
-    let displayCollection = courses.map(rowCourse => {
-      let bookLink
+    if (!rowCourse.get('bookingEnabled')) { // booking is disabled
+      return null;
+    }
+    if (rowCourse.get('bookingLink')) { // external link
+      return null;
+    }
+    if (!moment().isBefore(moment(rowCourse.get('date')))) { // class is past
+      return null;
+    }
+    if (moment().isBefore(moment(rowCourse.get('dateBookingOpened'))) // too early
+      || moment().isAfter(moment(rowCourse.get('dateBookingClosed')))) { // too late
+      return (
+        <p className={`book ${isFetching ? 'disabled' : null}`} style={{ color: "#27ae60", borderColor: "#27ae60", opacity: '0.4' }}>
+          RÉSERVATION BLOQUÉE
+        </p>
+      )
+    }
+    // case : client already booked ==> show CANCEL action.
+    bookings.forEach(booking => {
+      if (booking.get('client').id === user.id) {
+        if (!booking.get('canceled') && !booking.get('waiting')) {
+          booked = true
+        }
+        if (!booking.get('canceled') && booking.get('waiting')) {
+          waiting = true
+        }
+      }
+    })
 
-      if (rowCourse.get('bookingEnabled') && !rowCourse.get('bookingLink')) {
-        if (rowCourse.isBooked && rowCourse.booking && moment().isBefore(moment(rowCourse.get('date'))) && rowCourse.isWaiting && rowCourse.get('waitingListEnabled')) {
-          bookLink = (
-            <p
-              onClick={() => {this.props.handleUnwait(rowCourse)}}
-              className={`book cancel ${isFetching ? 'disabled' : null}`}
-              style={{ color: '#D00', borderColor: '#D00' }}
-            >
-              SE DÉSINSCRIRE DE LA LISTE D'ATTENTE
-            </p>
-          )
-        }  else if (moment().isBefore(moment(rowCourse.get('date'))) && rowCourse.get('bookingLimit') <= rowCourse.bookings.length && rowCourse.get('waitingListEnabled')) {
-          bookLink = (
-            <p
-              onClick={() => {this.props.handleWait(rowCourse)}}
-              className={`book cancel ${isFetching ? 'disabled' : null}`}
-              style={{ color: '#34495e', borderColor: '#34495e' }}
-            >   
-              S'INSCRIRE SUR LA LISTE D'ATTENTE
-            </p>
-          )
-        } else if (rowCourse.isBooked && rowCourse.booking && moment().isBefore(moment(rowCourse.get('date')))) {
-          bookLink = (
-            <p
-              onClick={() => {this.props.handleUnbook(rowCourse)}}
-              className={`book cancel ${isFetching ? 'disabled' : null}`}
-              style={{ color: '#D00', borderColor: '#D00' }}
-            >
-              ANNULER
-            </p>
-          )
-        } else if (rowCourse.isBooked && rowCourse.booking && moment().isAfter(moment(rowCourse.get('date')))) {
-          bookLink = (
-            <p
-              className={`book cancel ${isFetching ? 'disabled' : null}`}
-              style={{ color: '#D00', borderColor: '#D00', opacity: '0.4' }}
-            >
-              ANNULER
-            </p>
-          )
-        } else if (rowCourse.get('bookingLimit') <= rowCourse.bookings.length) {
-          bookLink = (
-            <p
-              className={`book cancel ${isFetching ? 'disabled' : null}`}
-              style={{ color: '#D00', borderColor: '#D00' }}
-            >
-              COMPLET
-            </p>
-          )
-        } else if (moment().isAfter(moment(rowCourse.get('date'))) || moment().isBefore(moment(rowCourse.get('dateBookingOpened'))) || moment().isAfter(moment(rowCourse.get('dateBookingClosed')))) {
-          bookLink = (
-            <p
-              className={`book ${isFetching ? 'disabled' : null}`}
-              style={{ color: "#27ae60", borderColor: "#27ae60", opacity: '0.4' }}
-            >
-              RÉSERVER
-            </p>
-          )
-        } else {
-          bookLink = (
-            <p
-            onClick={() => {this.props.handleBook(rowCourse)}}
-              className={`book ${isFetching ? 'disabled' : null}`}
-              style={{ color: "#27ae60", borderColor: "#27ae60" }}
-            >
-              RÉSERVER
+    if (booked == true) {
+      return (
+        <p onClick={() => { this.props.handleUnbook(rowCourse) }} className={`book cancel ${isFetching ? 'disabled' : null}`} style={{ color: "#D00", borderColor: "#D00" }}>
+          ANNULER
+      </p>
+      )
+    }
+
+    // case : booking limit reached, no more seats : full OR waiting list.
+    if (rowCourse.get('bookingLimit') <= rowCourse.bookings.length) {
+      // waiting list ?
+      if (rowCourse.get('waitingListEnabled')) {
+        // check if client is already waiting for this course
+        if (waiting) {
+          return (
+            <p onClick={() => { this.props.handleUnwait(rowCourse) }} className={`book cancel ${isFetching ? 'disabled' : null}`} style={{ color: '#D00', borderColor: '#D00' }}>
+              QUITTER LA LISTE D'ATTENTE
             </p>
           )
         }
-      }
+        else {
+          return (
+            <p onClick={() => { this.props.handleWait(rowCourse) }} className={`book cancel ${isFetching ? 'disabled' : null}`} style={{ color: '#34495e', borderColor: '#34495e' }}>
+              REJOINDRE LA LISTE D'ATTENTE
+            </p>
+          )
+        }
+      }//waitingList.enabled
+      return (
+        <p className={`book cancel ${isFetching ? 'disabled' : null}`} style={{ color: '#D00', borderColor: '#D00' }}>
+          COMPLET
+        </p>
+      )
+    }
+    // default, available status
+    return (
+      <p onClick={() => { this.props.handleBook(rowCourse) }} className={`book ${isFetching ? 'disabled' : null}`} style={{ color: "#27ae60", borderColor: "#27ae60" }}>
+        RÉSERVER
+      </p>
+    )
 
-      // #34495e
+  }
 
+  render() {
+
+    const { isFilterListVisible, courses, isFetching } = this.props
+    const user = JSON.parse(localStorage.getItem('user'))
+
+    let displayCollection = courses.map(rowCourse => {
+
+      let bookLink
+      let booked = false
+      let bookings = rowCourse.bookings
+      
       return (
         <div
           key={rowCourse.id}
@@ -142,9 +157,13 @@ class PlanningResamaniaList extends Component {
               ) : null}
             </div>
           </div>
-          {bookLink ? (
+          {/* {bookLink ? (
             <div className="bookingContainer">{bookLink}</div>
-            ) : null
+          ) : null
+          } */}
+          {this.bookingButton(rowCourse) ? (
+            <div className="bookingContainer">{this.bookingButton(rowCourse)}</div>
+          ) : null
           }
         </div>
       )
@@ -158,21 +177,21 @@ class PlanningResamaniaList extends Component {
         {displayCollection.length > 0 ? (
           displayCollection
         ) : (
-          <div className="no-course">
-            <p>
-              Il n'y a aucun cours ce jour là qui correspond à votre recherche !
+            <div className="no-course">
+              <p>
+                Il n'y a aucun cours ce jour là qui correspond à votre recherche !
             </p>
-          </div>
-        )}
+            </div>
+          )}
       </div>
     ) : (
-      <div
-        className="PlanningResamania_list"
-        style={{ paddingTop: isFilterListVisible ? '0' : '104px' }}
-      >
-        <Loader />
-      </div>
-    )
+        <div
+          className="PlanningResamania_list"
+          style={{ paddingTop: isFilterListVisible ? '0' : '104px' }}
+        >
+          <Loader />
+        </div>
+      )
   }
 }
 
