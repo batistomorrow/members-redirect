@@ -26,12 +26,13 @@ export default class Bookings extends React.Component {
     this.setState({ isLoading : true });
 
     const { club, user } = this.state;
-    new Parse.Query(Booking)
-    .limit(100).include('cours')
+    return new Parse.Query(Booking)
+    .limit(100)
+    .include('cours')
     .equalTo('client', user)
     .find()
     .then(bookings => {
-      new Parse.Query(Product)
+      return new Parse.Query(Product)
       .limit(100)
       .equalTo('club', club).equalTo('client', user)
       .include('template')
@@ -65,7 +66,9 @@ export default class Bookings extends React.Component {
     const formatted = [];
     const formattedPast = [];
 
-    bookings.forEach(row => {
+    bookings
+    .filter( b => !b.get('canceled'))
+    .forEach(row => {
       // À venir
       if (moment(row.get('cours').get('date')).isAfter(moment())) {
         formatted.push(row);
