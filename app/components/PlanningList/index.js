@@ -1,65 +1,59 @@
-import React, { Component } from 'react'
-import moment from 'moment'
+import React, { Component } from 'react';
+import moment from 'moment';
+import {fixFalseUTC} from '../../clean/date';
+import Loader from 'components/Loader';
 
-import Loader from 'components/Loader'
+import './style.scss';
 
-import './style.scss'
-
-class PlanningResamaniaList extends Component {
+export default class PlanningResamaniaList extends Component {
 
   constructor(props) {
-
-    super(props)
+    super(props);
+    this.bookingButton = this.bookingButton.bind(this);
 
     this.state = {
       displayCollection: []
-    }
-    this.bookingButton = this.bookingButton.bind(this)
+    };
   }
 
   bookingButton(rowCourse) {
+    const { isFilterListVisible, courses, isFetching } = this.props;
+    const user = JSON.parse(localStorage.getItem('user'));
+    let booked = false;
+    let waiting = false;
+    let bookings = rowCourse.bookings;
 
-    const { isFilterListVisible, courses, isFetching } = this.props
-    const user = JSON.parse(localStorage.getItem('user'))
-    let booked = false
-    let waiting = false
-    let bookings = rowCourse.bookings
+    let coursDate = fixFalseUTC(rowCourse.get('date'));
+    if (!rowCourse.get('bookingEnabled')) return null;
+    if (rowCourse.get('bookingLink')) return null;
+    if (!moment().isBefore(coursDate)) return null;
 
-    if (!rowCourse.get('bookingEnabled')) { // booking is disabled
-      return null;
-    }
-    if (rowCourse.get('bookingLink')) { // external link
-      return null;
-    }
-    if (!moment().isBefore(moment(rowCourse.get('date')))) { // class is past
-      return null;
-    }
-    if (moment().isBefore(moment(rowCourse.get('dateBookingOpened'))) // too early
-      || moment().isAfter(moment(rowCourse.get('dateBookingClosed')))) { // too late
+    if (moment().isBefore(moment(rowCourse.get('dateBookingOpened')))
+      || moment().isAfter(moment(rowCourse.get('dateBookingClosed')))) {
       return (
         <p className={`book ${isFetching ? 'disabled' : null}`} style={{ color: "#27ae60", borderColor: "#27ae60", opacity: '0.4' }}>
           RÉSERVATION BLOQUÉE
         </p>
-      )
+      );
     }
     // case : client already booked ==> show CANCEL action.
     bookings.forEach(booking => {
       if (booking.get('client').id === user.id) {
         if (!booking.get('canceled') && !booking.get('waiting')) {
-          booked = true
+          booked = true;
         }
         if (!booking.get('canceled') && booking.get('waiting')) {
-          waiting = true
+          waiting = true;
         }
       }
-    })
+    });
 
     if (booked == true) {
       return (
         <p onClick={() => { this.props.handleUnbook(rowCourse) }} className={`book cancel ${isFetching ? 'disabled' : null}`} style={{ color: "#D00", borderColor: "#D00" }}>
           ANNULER
       </p>
-      )
+      );
     }
 
     // case : booking limit reached, no more seats : full OR waiting list.
@@ -98,15 +92,20 @@ class PlanningResamaniaList extends Component {
   }
 
   render() {
+    const { isFilterListVisible, courses, isFetching } = this.props;
 
-    const { isFilterListVisible, courses, isFetching } = this.props
-    const user = JSON.parse(localStorage.getItem('user'))
+    if( isFetching )
+      return (
+        <div className="PlanningResamania_list" style={{ paddingTop: isFilterListVisible ? '0' : '104px' }} >
+          <Loader />
+        </div>
+      );
 
+    const user = JSON.parse(localStorage.getItem('user'));
     let displayCollection = courses.map(rowCourse => {
-
-      let bookLink
-      let booked = false
-      let bookings = rowCourse.bookings
+      let bookLink;
+      let booked = false;
+      let bookings = rowCourse.bookings;
       
       return (
         <div
@@ -150,49 +149,28 @@ class PlanningResamaniaList extends Component {
                     .format('HH[h]mm')}
                 </p>
               </div>
-              {rowCourse.coach && rowCourse.coach.name ? (
-                <div className={'coach'}>
-                  <p>avec {rowCourse.coach.surname}</p>
-                </div>
-              ) : null}
+              {!!rowCourse.coach && !!rowCourse.coach.name && <div className={'coach'}> <p>avec {rowCourse.coach.surname}</p></div> }
             </div>
           </div>
-          {/* {bookLink ? (
-            <div className="bookingContainer">{bookLink}</div>
-          ) : null
-          } */}
-          {this.bookingButton(rowCourse) ? (
-            <div className="bookingContainer">{this.bookingButton(rowCourse)}</div>
-          ) : null
+          {this.bookingButton(rowCourse)
+            ? <div className="bookingContainer">{this.bookingButton(rowCourse)}</div>
+            : null
           }
         </div>
       )
-    })
+    });
 
-    return !isFetching ? (
-      <div
-        className="PlanningResamania_list"
-        style={{ paddingTop: isFilterListVisible ? '0' : '104px' }}
-      >
-        {displayCollection.length > 0 ? (
-          displayCollection
-        ) : (
+    return (
+      <div className="PlanningResamania_list" style={{ paddingTop: isFilterListVisible ? '0' : '104px' }} >
+        {displayCollection.length > 0
+          ? displayCollection
+          : (
             <div className="no-course">
-              <p>
-                Il n'y a aucun cours ce jour là qui correspond à votre recherche !
-            </p>
+              <p>Il n'y a aucun cours ce jour là qui correspond à votre recherche !</p>
             </div>
-          )}
+            )
+        }
       </div>
-    ) : (
-        <div
-          className="PlanningResamania_list"
-          style={{ paddingTop: isFilterListVisible ? '0' : '104px' }}
-        >
-          <Loader />
-        </div>
-      )
+    );
   }
 }
-
-export default PlanningResamaniaList
