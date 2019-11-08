@@ -73,7 +73,7 @@ export default class Bookings extends React.Component {
       if (moment(row.get('cours').get('date')).isAfter(moment())) {
         formatted.push(row);
       // Passée
-      } else if (!row.get('waiting') && !row.get('canceled')) {
+      } else if (!row.get('waiting') ) {
         formattedPast.push(row);
       }
     });
