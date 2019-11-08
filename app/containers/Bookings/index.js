@@ -1,237 +1,246 @@
-import React from 'react'
-import Parse from 'parse'
+import React from 'react';
+import Parse from 'parse';
+import moment from 'moment';
+import { getItem } from 'utils/localStorage';
+import { Club, Client, Booking, Cours, CoursTemplate, Product } from 'utils/parse';
+import {fixFalseUTC} from '../../clean/date';
 
-import moment from 'moment'
+import './style.scss';
 
-import { getItem } from 'utils/localStorage'
-import { Club, Client, Booking, Cours, CoursTemplate, Product } from 'utils/parse'
+export default class Bookings extends React.Component {
 
-import './style.scss'
-
-class Bookings extends React.Component {
   constructor(props) {
-    super(props)
+    super(props);
     
     this.state = {
       club: Club.createWithoutData(getItem('club').id),
       user: Client.createWithoutData(getItem('user').id),
       isLoading: true,
-      isCalling: false,
       bookings: [],
       products: [],
       activeWindow: "bookings"
-    }
+    };
   }
 
   componentWillMount() {
-    const that = this
-    const { club, user } = that.state
+    this.setState({ isLoading : true });
 
-    const queryBookings = new Parse.Query(Booking)
-
-    queryBookings.limit(100).include('cours')
-    queryBookings.equalTo('client', user)
-
-    queryBookings.find().then(bookings => {
-      const queryProduct = new Parse.Query(Product)
-
-      queryProduct.limit(100)
-      queryProduct.equalTo('club', club).equalTo('client', user)
-      queryProduct.include('template')
-
-      queryProduct.find().then(products => {
-        that.setState({ bookings, products })
+    const { club, user } = this.state;
+    new Parse.Query(Booking)
+    .limit(100).include('cours')
+    .equalTo('client', user)
+    .find()
+    .then(bookings => {
+      new Parse.Query(Product)
+      .limit(100)
+      .equalTo('club', club).equalTo('client', user)
+      .include('template')
+      .find()
+      .then(products => {
+        this.setState({ bookings, products, isLoading:false });
       })
+      ;
     })
+    .catch( e => {
+      console.error(e);
+    })
+    ;
   }
 
   changeWindow (name) {
-    this.setState({ activeWindow: name })
+    this.setState({ activeWindow: name });
   }
 
   render() {
-    const { bookings, products, activeWindow } = this.state
+    const { isLoading, bookings, products, activeWindow } = this.state;
 
+    if(isLoading) {
+      return (
+        <div className={"Bookings MainContainer"}>
+          <p>Chargement...</p>
+        </div>
+      );
+    }
     // Réservations
-    const formatted = []
-    const formattedPast = []
+    const formatted = [];
+    const formattedPast = [];
 
     bookings.forEach(row => {
       // À venir
       if (moment(row.get('cours').get('date')).isAfter(moment())) {
-        formatted.push(row)
+        formatted.push(row);
       // Passée
       } else if (!row.get('waiting') && !row.get('canceled')) {
-        formattedPast.push(row)
+        formattedPast.push(row);
       }
-    })
+    });
  
     // Tickets
-    const currentTickets = []
-    const pastTickets = []
+    const currentTickets = [];
+    const pastTickets = [];
 
     products
-      .filter(r => r.get('type') === 'PRODUCT_TYPE_TICKET')
-      .forEach(r => {
-        const name = `${r.get('name')} - ${r.get('price')} € TTC`
+    .filter(r => r.get('type') === 'PRODUCT_TYPE_TICKET')
+    .forEach(r => {
+      const name = `${r.get('name')} - ${r.get('price')} € TTC`
 
-        if (r && r.get('expireAt')) {
-          if (
-            r &&
-            moment(r.get('expireAt')).isAfter(moment()) &&
-            r.get('credit') > 0
-          ) {
-            currentTickets.push(
-              <div
-                key={r.id}
-              >
-                <p style={{ float: 'left' }}>{name} - {r.get('credit')} crédits restants</p>
-                <p style={{ float: 'right' }}>
-                  {moment(r.get('expireAt')).format('L')}
-                </p>
-                <div style={{clear: 'both'}}></div>
-              </div>
-            )
-          }
-        } else if (r && !r.get('expireAt') && r.get('credit') > 0) {
+      if (r && r.get('expireAt')) {
+        if (
+          r &&
+          moment(r.get('expireAt')).isAfter(moment()) &&
+          r.get('credit') > 0
+        ) {
           currentTickets.push(
             <div
               key={r.id}
             >
               <p style={{ float: 'left' }}>{name} - {r.get('credit')} crédits restants</p>
+              <p style={{ float: 'right' }}>
+                {moment(r.get('expireAt')).format('L')}
+              </p>
               <div style={{clear: 'both'}}></div>
             </div>
           )
         }
+      } else if (r && !r.get('expireAt') && r.get('credit') > 0) {
+        currentTickets.push(
+          <div
+            key={r.id}
+          >
+            <p style={{ float: 'left' }}>{name} - {r.get('credit')} crédits restants</p>
+            <div style={{clear: 'both'}}></div>
+          </div>
+        )
+      }
 
-        if (r && r.get('expireAt')) {
-          if (
-            (r && moment(r.get('expireAt')).isBefore(moment())) ||
-            (r && r.get('credit') <= 0)
-          ) {
-            pastTickets.push(
-              <div
-                key={r.id}
-                className='item past'
-              >
-                <p style={{ float: 'left' }}>{name}</p>
-                <p style={{ float: 'right' }}>
-                  {moment(r.get('expireAt')).format('L')}
-                </p>
-                <div style={{clear: 'both'}}></div>
-              </div>
-            )
-          }
-        } else if (r && !r.get('expireAt') && r.get('credit') <= 0) {
+      if (r && r.get('expireAt')) {
+        if (
+          (r && moment(r.get('expireAt')).isBefore(moment())) ||
+          (r && r.get('credit') <= 0)
+        ) {
           pastTickets.push(
             <div
               key={r.id}
               className='item past'
             >
               <p style={{ float: 'left' }}>{name}</p>
+              <p style={{ float: 'right' }}>
+                {moment(r.get('expireAt')).format('L')}
+              </p>
               <div style={{clear: 'both'}}></div>
             </div>
           )
         }
-      })
+      } else if (r && !r.get('expireAt') && r.get('credit') <= 0) {
+        pastTickets.push(
+          <div
+            key={r.id}
+            className='item past'
+          >
+            <p style={{ float: 'left' }}>{name}</p>
+            <div style={{clear: 'both'}}></div>
+          </div>
+        )
+      }
+    })
 
     // Tickets
-    const currentSubs = []
-    const pastSubs = []
+    const currentSubs = [];
+    const pastSubs = [];
 
     products
-      .filter(r => r.get('type') === 'PRODUCT_TYPE_SUBSCRIPTION')
-      .forEach(r => {
-        const name = `${r.get('name')} - ${r.get('price')} € TTC`
-        
-        if (r && r.get('expireAt')) {
-          if (r && moment(r.get('expireAt')).isAfter(moment())) {
-            currentSubs.push(
-              <div
-                key={r.id}
-                className='item'
-              >
-                <p style={{ float: 'left' }}>{name}</p>
-                <p style={{ float: 'right' }}>
-                  {moment(r.get('expireAt')).format('L')}
-                </p>
-                <div style={{clear: 'both'}}></div>
-              </div>
-            )
-          } else if (r && !r.get('expireAt')) {
-            currentSubs.push(
-              <div
-                key={r.id}
-                className='item'
-              >
-                <p style={{ float: 'left' }}>{name}</p>
-                <div style={{clear: 'both'}}></div>
-              </div>
-            )
-          }
-        } else {
-          if (
-            r &&
-            r.get('expireAt') &&
-            moment(r.get('expireAt')).isAfter(moment())
-          ) {
-            currentSubs.push(
-              <div
-                key={r.id}
-                className='item'
-              >
-                <p style={{ float: 'left' }}>{name}</p>
-                <p style={{ float: 'right' }}>
-                  {moment(r.get('expireAt')).format('L')}
-                </p>
-                <div style={{clear: 'both'}}></div>
-              </div>
-            )
-          } else if (r && !r.get('expireAt')) {
-            currentSubs.push(
-              <div
-                key={r.id}
-                className='item'
-              >
-                <p style={{ float: 'left' }}>{name}</p>
-                <div style={{clear: 'both'}}></div>
-              </div>
-            )
-          }
+    .filter(r => r.get('type') === 'PRODUCT_TYPE_SUBSCRIPTION')
+    .forEach(r => {
+      const name = `${r.get('name')} - ${r.get('price')} € TTC`
+      
+      if (r && r.get('expireAt')) {
+        if (r && moment(r.get('expireAt')).isAfter(moment())) {
+          currentSubs.push(
+            <div
+              key={r.id}
+              className='item'
+            >
+              <p style={{ float: 'left' }}>{name}</p>
+              <p style={{ float: 'right' }}>
+                {moment(r.get('expireAt')).format('L')}
+              </p>
+              <div style={{clear: 'both'}}></div>
+            </div>
+          )
+        } else if (r && !r.get('expireAt')) {
+          currentSubs.push(
+            <div
+              key={r.id}
+              className='item'
+            >
+              <p style={{ float: 'left' }}>{name}</p>
+              <div style={{clear: 'both'}}></div>
+            </div>
+          )
         }
+      } else {
+        if (
+          r &&
+          r.get('expireAt') &&
+          moment(r.get('expireAt')).isAfter(moment())
+        ) {
+          currentSubs.push(
+            <div
+              key={r.id}
+              className='item'
+            >
+              <p style={{ float: 'left' }}>{name}</p>
+              <p style={{ float: 'right' }}>
+                {moment(r.get('expireAt')).format('L')}
+              </p>
+              <div style={{clear: 'both'}}></div>
+            </div>
+          )
+        } else if (r && !r.get('expireAt')) {
+          currentSubs.push(
+            <div
+              key={r.id}
+              className='item'
+            >
+              <p style={{ float: 'left' }}>{name}</p>
+              <div style={{clear: 'both'}}></div>
+            </div>
+          )
+        }
+      }
 
-        if (r && r.get('expireAt')) {
-          if (r && moment(r.get('expireAt')).isBefore(moment())) {
-            pastSubs.push(
-              <div
-                key={r.id}
-                className='item past'
-              >
-                <p style={{ float: 'left' }}>{name}</p>
-                <p style={{ float: 'right' }}>
-                  {moment(r.get('expireAt')).format('L')}
-                </p>
-                <div style={{clear: 'both'}}></div>
-              </div>
-            )
-          }
-        } else {
-          if (r && moment(r.get('expireAt')).isBefore(moment())) {
-            pastSubs.push(
-              <div
-                key={r.id}
-                className='item past'
-              >
-                <p style={{ float: 'left' }}>{name}</p>
-                <p style={{ float: 'right' }}>
-                  {moment(r.get('expireAt')).format('L')}
-                </p>
-                <div style={{clear: 'both'}}></div>
-              </div>
-            )
-          }
+      if (r && r.get('expireAt')) {
+        if (r && moment(r.get('expireAt')).isBefore(moment())) {
+          pastSubs.push(
+            <div
+              key={r.id}
+              className='item past'
+            >
+              <p style={{ float: 'left' }}>{name}</p>
+              <p style={{ float: 'right' }}>
+                {moment(r.get('expireAt')).format('L')}
+              </p>
+              <div style={{clear: 'both'}}></div>
+            </div>
+          )
         }
-      })
+      } else {
+        if (r && moment(r.get('expireAt')).isBefore(moment())) {
+          pastSubs.push(
+            <div
+              key={r.id}
+              className='item past'
+            >
+              <p style={{ float: 'left' }}>{name}</p>
+              <p style={{ float: 'right' }}>
+                {moment(r.get('expireAt')).format('L')}
+              </p>
+              <div style={{clear: 'both'}}></div>
+            </div>
+          )
+        }
+      }
+    })
 
     return (
       <div className={"Bookings MainContainer"}>
@@ -250,30 +259,38 @@ class Bookings extends React.Component {
             ? (
               <div>
                 <h3>À venir</h3>
-                {formatted.map((row, index) => 
-                  <div key={index}>
-                    <p>
-                      {row.get('cours').get('name')} - {moment(row.get('cours').get('date')).format('L')} à{' '}
-                      {moment(row.get('cours').get('date')).format('LT')}
-                    </p>
-                    <p>
-                      Réservation effectuée le {moment(row.get('dateBooking')).format('L')} à{' '}
-                      {moment(row.get('dateBooking')).format('LT')}.
-                    </p>
-                  </div>
+                {formatted.map((row, index) => {
+                  let coursDate = moment(fixFalseUTC( row.get('cours').get('date') ));
+                  return (
+                    <div key={index}>
+                      <p>
+                        {row.get('cours').get('name')} - {coursDate.format('L')} à{' '}
+                        {coursDate.format('LT')}
+                      </p>
+                      <p>
+                        Réservation effectuée le {moment(row.get('dateBooking')).format('L')} à{' '}
+                        {moment(row.get('dateBooking')).format('LT')}.
+                      </p>
+                    </div>
+                  );
+                }
                 )}
                 <h3>Passées</h3>
-                {formattedPast.map((row, index) => 
-                  <div key={index}>
-                    <p>
-                      {row.get('cours').get('name')} - {moment(row.get('cours').get('date')).format('L')} à{' '}
-                      {moment(row.get('cours').get('date')).format('LT')}
-                    </p>
-                    <p>
-                      Réservation effectuée le {moment(row.get('dateBooking')).format('L')} à{' '}
-                      {moment(row.get('dateBooking')).format('LT')}.
-                    </p>
-                  </div>
+                {formattedPast.map((row, index) => {
+                  let coursDate = moment(fixFalseUTC( row.get('cours').get('date') ));
+                  return (
+                    <div key={index}>
+                      <p>
+                        {row.get('cours').get('name')} - {coursDate.format('L')} à{' '}
+                        {coursDate.format('LT')}
+                      </p>
+                      <p>
+                        Réservation effectuée le {moment(row.get('dateBooking')).format('L')} à{' '}
+                        {moment(row.get('dateBooking')).format('LT')}.
+                      </p>
+                    </div>
+                  );
+                }
                 )}
               </div>
             ) : null
@@ -303,5 +320,3 @@ class Bookings extends React.Component {
     )
   }
 }
-
-export default Bookings
