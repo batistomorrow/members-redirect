@@ -83,16 +83,12 @@ export default class Bookings extends React.Component {
     const pastTickets = [];
 
     products
-    .filter(r => r.get('type') === 'PRODUCT_TYPE_TICKET')
+    .filter(r => r && r.get('type') === 'PRODUCT_TYPE_TICKET')
     .forEach(r => {
       const name = `${r.get('name')} - ${r.get('price')} € TTC`
 
-      if (r && r.get('expireAt')) {
-        if (
-          r &&
-          moment(r.get('expireAt')).isAfter(moment()) &&
-          r.get('credit') > 0
-        ) {
+      if (r.get('expireAt')) {
+        if ( moment(r.get('expireAt')).isAfter(moment()) && r.get('credit') > 0 ) {
           currentTickets.push(
             <div
               key={r.id}
@@ -105,7 +101,7 @@ export default class Bookings extends React.Component {
             </div>
           )
         }
-      } else if (r && !r.get('expireAt') && r.get('credit') > 0) {
+      } else if (!r.get('expireAt') && r.get('credit') > 0) {
         currentTickets.push(
           <div
             key={r.id}
@@ -116,11 +112,8 @@ export default class Bookings extends React.Component {
         )
       }
 
-      if (r && r.get('expireAt')) {
-        if (
-          (r && moment(r.get('expireAt')).isBefore(moment())) ||
-          (r && r.get('credit') <= 0)
-        ) {
+      if (r.get('expireAt')) {
+        if ( moment(r.get('expireAt')).isBefore(moment()) || r.get('credit') <= 0 ) {
           pastTickets.push(
             <div
               key={r.id}
@@ -134,7 +127,7 @@ export default class Bookings extends React.Component {
             </div>
           )
         }
-      } else if (r && !r.get('expireAt') && r.get('credit') <= 0) {
+      } else if (!r.get('expireAt') && r.get('credit') <= 0) {
         pastTickets.push(
           <div
             key={r.id}
@@ -152,12 +145,12 @@ export default class Bookings extends React.Component {
     const pastSubs = [];
 
     products
-    .filter(r => r.get('type') === 'PRODUCT_TYPE_SUBSCRIPTION')
+    .filter(r => r && r.get('type') === 'PRODUCT_TYPE_SUBSCRIPTION')
     .forEach(r => {
       const name = `${r.get('name')} - ${r.get('price')} € TTC`
       
-      if (r && r.get('expireAt')) {
-        if (r && moment(r.get('expireAt')).isAfter(moment())) {
+      if (r.get('expireAt')) {
+        if (moment(r.get('expireAt')).isAfter(moment())) {
           currentSubs.push(
             <div
               key={r.id}
@@ -170,7 +163,7 @@ export default class Bookings extends React.Component {
               <div style={{clear: 'both'}}></div>
             </div>
           )
-        } else if (r && !r.get('expireAt')) {
+        } else if (!r.get('expireAt')) {
           currentSubs.push(
             <div
               key={r.id}
@@ -182,11 +175,7 @@ export default class Bookings extends React.Component {
           )
         }
       } else {
-        if (
-          r &&
-          r.get('expireAt') &&
-          moment(r.get('expireAt')).isAfter(moment())
-        ) {
+        if ( r.get('expireAt') && moment(r.get('expireAt')).isAfter(moment()) ) {
           currentSubs.push(
             <div
               key={r.id}
@@ -199,7 +188,7 @@ export default class Bookings extends React.Component {
               <div style={{clear: 'both'}}></div>
             </div>
           )
-        } else if (r && !r.get('expireAt')) {
+        } else if (!r.get('expireAt') ) {
           currentSubs.push(
             <div
               key={r.id}
@@ -212,8 +201,8 @@ export default class Bookings extends React.Component {
         }
       }
 
-      if (r && r.get('expireAt')) {
-        if (r && moment(r.get('expireAt')).isBefore(moment())) {
+      if (r.get('expireAt')) {
+        if (moment(r.get('expireAt')).isBefore(moment())) {
           pastSubs.push(
             <div
               key={r.id}
@@ -228,7 +217,7 @@ export default class Bookings extends React.Component {
           )
         }
       } else {
-        if (r && moment(r.get('expireAt')).isBefore(moment())) {
+        if (moment(r.get('expireAt')).isBefore(moment())) {
           pastSubs.push(
             <div
               key={r.id}
