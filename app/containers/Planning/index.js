@@ -112,7 +112,7 @@ export default class Planning extends Component {
   }
 
   getCourses() {
-
+    console.log('getCourses');
     this.setState({ isCalling: true })
 
     const that = this
@@ -128,21 +128,22 @@ export default class Planning extends Component {
     query.ascending('date')
     query.limit(1000)
 
-    query.find().then(courses => {
-
+    query.find()
+    .then(courses => {
+      console.log('Having', courses.length, 'cours');
       // query all bookings for the selected day courses, not matter their status
-
-      let queryBookings = new Parse.Query(Booking)
-      queryBookings.containedIn('cours', courses)
-      queryBookings.include('client')
-      queryBookings.include('cours')
-
-      queryBookings.find().then(fetchedBookings => {
-
+      new Parse.Query(Booking)
+      .containedIn('cours', courses)
+      .include('cours')
+      .equalTo('client', Client.createWithoutData(user.id))
+      .include('client')
+      .descending('date')
+      .limit(150)
+      .find()
+      .then(fetchedBookings => {
+        console.log('Having', fetchedBookings.length, 'bookings');
         courses.forEach(aCourse => {
-
           aCourse.bookings = []
-
           fetchedBookings.forEach(aFetchedBooking => {
 
             // only add bookings that (1) match this class
