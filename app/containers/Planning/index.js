@@ -62,25 +62,19 @@ export default class Planning extends Component {
     const that = this
 
     let queryClub = new Parse.Query(Club)
+    .equalTo('objectId', that.state.club.id)
+    .first()
+    .then(club => {
 
-    queryClub.equalTo('objectId', that.state.club.id)
-
-    queryClub.first().then(club => {
-
-      let queryConcepts = new Parse.Query(CoursTemplate)
-
-      queryConcepts.equalTo('club', that.state.club)
-      queryConcepts.limit(1000)
-      queryConcepts.ascending('name')
-
-      queryConcepts.find().then(conceptsList => {
-        const concepts = conceptsList.map(row => {
-          return row.get('name')
-        })
-
-        const initialRoom = club.get('initialRoom')
-        const rooms = club.get('classesRooms')
-
+      return new Parse.Query(CoursTemplate)
+      .equalTo('club', that.state.club)
+      .limit(1000)
+      .ascending('name')
+      .find()
+      .then(conceptsList => {
+        const concepts = conceptsList.map(row => row.get('name') );
+        const initialRoom = club.get('initialRoom');
+        const rooms = club.get('classesRooms');
         that.setState({
           rooms: rooms,
           filters: {
@@ -91,23 +85,28 @@ export default class Planning extends Component {
         }, () => that.getCourses())
       })
     })
+    .catch( e => {
+      console.error(e);
+    })
+    ;
   }
 
   getClient() {
 
     const that = this
 
-    let query = new Parse.Query(Client)
-
-    query.equalTo('objectId', JSON.parse(localStorage.getItem('user')).id)
-
-    query.first().then(client => {
-
+    return new Parse.Query(Client)
+    .equalTo('objectId', JSON.parse(localStorage.getItem('user')).id)
+    .first()
+    .then(client => {
       that.setState({
         bookingDisabled: client.get('bookingDisabled')
       }, () => that.getFilters())
-
     })
+    .catch( e => {
+      console.error(e);
+    })
+    ;
   }
 
   getCourses() {
@@ -118,32 +117,30 @@ export default class Planning extends Component {
     const { filters, date } = that.state
     const user = JSON.parse(localStorage.getItem('user'))
 
-    let query = new Parse.Query(Cours)
-
-    query.equalTo('club', that.state.club)
-    query.greaterThanOrEqualTo('date', date.startOf('d').toDate())
-    query.lessThan('date', date.endOf('d').toDate())
-    query.ascending('date')
-    query.limit(1000)
-
-    query.find()
+    new Parse.Query(Cours)
+    .equalTo('club', that.state.club)
+    .greaterThanOrEqualTo('date', date.startOf('d').toDate())
+    .lessThan('date', date.endOf('d').toDate())
+    .ascending('date')
+    .limit(1000)
+    .find()
     .then(courses => {
-      // query all bookings for the selected day courses, not matter their status
       new Parse.Query(Booking)
       .containedIn('cours', courses)
       .include('cours')
-      .equalTo('client', Client.createWithoutData(user.id))
+      .equalTo('canceled', false)
+      //.equalTo('client', Client.createWithoutData(user.id))
       .include('client')
       .descending('date')
-      .limit(150)
+      .limit(courses.length * 30)
       .find()
-      .then(fetchedBookings => {
-        courses.forEach(aCourse => {
-          aCourse.bookings = []
-          fetchedBookings.forEach(aFetchedBooking => {
-            if (aCourse.id === aFetchedBooking.get('cours').id) {
-              aFetchedBooking.userId = user.id
-              aCourse.bookings.push(aFetchedBooking)
+      .then(bookings => {
+        courses.forEach(c => {
+          c.bookings = [];
+          bookings.forEach(b => {
+            if (c.id === b.get('cours').id) {
+              b.userId = user.id;
+              c.bookings.push(b);
             }
           });
         });
@@ -259,14 +256,13 @@ export default class Planning extends Component {
     ;
   }
 
-  handleUnbook(cours) {
+  handleUnbook(bookingId) {
     if(this.state.isFetching) return;
     this.setState({ isFetching: true });
 
     const that = this;
-    let id = cours.bookings[0].id;
 
-    fetch(`/api/booking/${id}`, { 
+    fetch(`/api/booking/${bookingId}`, { 
       method:'DELETE',
     })
     .then( result => {

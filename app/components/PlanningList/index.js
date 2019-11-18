@@ -36,8 +36,10 @@ export default class PlanningResamaniaList extends Component {
         </p>
       );
     }
-    // case : client already booked ==> show CANCEL action.
-    bookings.forEach(booking => {
+    let clientBooking = rowCourse.bookings.find( b => b.get('client').id === user.id && !b.get('canceled') );
+
+    bookings
+    .forEach(booking => {
       if (booking.get('client').id === user.id) {
         if (!booking.get('canceled') && !booking.get('waiting')) {
           booked = true;
@@ -48,46 +50,42 @@ export default class PlanningResamaniaList extends Component {
       }
     });
 
-    if (booked == true) {
-      return (
-        <p onClick={() => { this.props.handleUnbook(rowCourse) }} className={`book cancel ${isFetching ? 'disabled' : null}`} style={{ color: "#D00", borderColor: "#D00" }}>
-          ANNULER
-      </p>
-      );
+    if ( clientBooking ) {
+      let bId = clientBooking.id;
+      if( !clientBooking.get('waiting')) {
+        return (
+          <p onClick={() => { this.props.handleUnbook(bId) }} className={`book cancel ${isFetching ? 'disabled' : null}`} style={{ color: "#D00", borderColor: "#D00" }}>
+            ANNULER
+          </p>
+        );
+      } else {
+        return (
+          <p onClick={() => { this.props.handleUnwait(bId) }} className={`book cancel ${isFetching ? 'disabled' : null}`} style={{ color: '#D00', borderColor: '#D00' }}>
+            QUITTER LA LISTE D'ATTENTE
+          </p>
+        );  
+      }
+    } else {
+      if (rowCourse.get('bookingLimit') > rowCourse.bookings.length) {
+         return (
+          <p onClick={() => { this.props.handleBook(rowCourse) }} className={`book ${isFetching ? 'disabled' : null}`} style={{ color: "#27ae60", borderColor: "#27ae60" }}>
+            RÉSERVER
+          </p>
+        );
+      } else if ( !rowCourse.get('waitingListEnabled') ){
+        return (
+          <p className={`book cancel ${isFetching ? 'disabled' : null}`} style={{ color: '#D00', borderColor: '#D00' }}>
+            COMPLET
+          </p>
+        );
+      } else {
+        return (
+          <p onClick={() => { this.props.handleWait(rowCourse) }} className={`book cancel ${isFetching ? 'disabled' : null}`} style={{ color: '#34495e', borderColor: '#34495e' }}>
+            REJOINDRE LA LISTE D'ATTENTE
+          </p>
+        );
+      }
     }
-    // case : booking limit reached, no more seats : full OR waiting list.
-    if (rowCourse.get('bookingLimit') <= rowCourse.bookings.length) {
-      // waiting list ?
-      if (rowCourse.get('waitingListEnabled')) {
-        // check if client is already waiting for this course
-        if (waiting) {
-          return (
-            <p onClick={() => { this.props.handleUnwait(rowCourse) }} className={`book cancel ${isFetching ? 'disabled' : null}`} style={{ color: '#D00', borderColor: '#D00' }}>
-              QUITTER LA LISTE D'ATTENTE
-            </p>
-          )
-        }
-        else {
-          return (
-            <p onClick={() => { this.props.handleWait(rowCourse) }} className={`book cancel ${isFetching ? 'disabled' : null}`} style={{ color: '#34495e', borderColor: '#34495e' }}>
-              REJOINDRE LA LISTE D'ATTENTE
-            </p>
-          )
-        }
-      }//waitingList.enabled
-      return (
-        <p className={`book cancel ${isFetching ? 'disabled' : null}`} style={{ color: '#D00', borderColor: '#D00' }}>
-          COMPLET
-        </p>
-      )
-    }
-    // default, available status
-    return (
-      <p onClick={() => { this.props.handleBook(rowCourse) }} className={`book ${isFetching ? 'disabled' : null}`} style={{ color: "#27ae60", borderColor: "#27ae60" }}>
-        RÉSERVER
-      </p>
-    )
-
   }
 
   render() {
