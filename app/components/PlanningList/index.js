@@ -55,7 +55,6 @@ export default class PlanningResamaniaList extends Component {
       </p>
       );
     }
-
     // case : booking limit reached, no more seats : full OR waiting list.
     if (rowCourse.get('bookingLimit') <= rowCourse.bookings.length) {
       // waiting list ?

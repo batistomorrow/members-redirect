@@ -46,7 +46,6 @@ export default class Planning extends Component {
     this.handleBook = this.handleBook.bind(this)
     this.handleUnbook = this.handleUnbook.bind(this)
     this.handleWait = this.handleWait.bind(this)
-    this.handleUnwait = this.handleUnwait.bind(this)
 
     moment.locale('fr')
   }
@@ -223,7 +222,11 @@ export default class Planning extends Component {
     });
   }
 
-  handleBook(cours) {
+  handleWait(cours) {
+    return this.handleBook(cours, true);
+  }
+
+  handleBook(cours, waiting=false) {
     if(this.state.isFetching) return;
 
     this.setState({ isFetching: true });
@@ -233,7 +236,7 @@ export default class Planning extends Component {
     let coursId = cours.id;
     fetch('/api/booking', { 
       method:'POST',
-      body : JSON.stringify({userId, coursId}),
+      body : JSON.stringify({userId, coursId, waiting}),
       headers : {
         'content-type' : 'application/json'
       }
@@ -243,12 +246,10 @@ export default class Planning extends Component {
         toast.success("Votre réservation a bien été acceptée");
         return;
       }
-      toast.error("La réservation a échouée");
-
-      result.json()
-      .then( js => console.error("Cannot book", js) )
-      .catch( e => console.error(e) );
-
+      return result.json()
+      .then( js => {
+        toast.error(js.userMsg || "La réservation a échouée");
+      })
     })
     .catch( e => {
       console.error(e);
@@ -258,536 +259,31 @@ export default class Planning extends Component {
     ;
   }
 
-  handleBookWTF(rowCourse) {
+  handleUnbook(cours) {
     if(this.state.isFetching) return;
     this.setState({ isFetching: true });
 
     const that = this;
-    const courseProductTemplates = rowCourse.get('productTemplates');
-    const creditsCost = rowCourse.get('creditsCost');
-    const user = JSON.parse(localStorage.getItem('user'));
+    let id = cours.bookings[0].id;
 
-    if (courseProductTemplates && courseProductTemplates.length > 0) {
-
-      const { user, club } = that.state
-
-      let queryUserSubProducts1 = new Parse.Query("Product")
-      .equalTo("type", 'PRODUCT_TYPE_SUBSCRIPTION')
-      .greaterThanOrEqualTo('expireAt', moment().toDate());
-
-      let queryUserSubProducts2 = new Parse.Query("Product")
-      .equalTo("type", 'PRODUCT_TYPE_SUBSCRIPTION')
-      .doesNotExist('expireAt');
-
-      let mainQuerySub = Parse.Query.or(queryUserSubProducts1, queryUserSubProducts2)
-
-      let queryUserTicketProducts1 = new Parse.Query("Product")
-      .descending('createdAt')
-      .equalTo('type', 'PRODUCT_TYPE_TICKET')
-      .greaterThanOrEqualTo('expireAt', moment().toDate())
-      .greaterThan('credit', 0);
-
-      let queryUserTicketProducts2 = new Parse.Query("Product")
-      .descending('createdAt')
-      .equalTo('type', 'PRODUCT_TYPE_TICKET')
-      .doesNotExist('expireAt')
-      .greaterThan('credit', 0);
-
-      let mainQueryTicket = Parse.Query.or(queryUserTicketProducts1, queryUserTicketProducts2)
-
-      Parse.Query.or(mainQuerySub, mainQueryTicket)
-      .equalTo('client', that.state.user)
-      .equalTo('club', that.state.club)
-      .find()
-      .then( userValidProducts => {
-
-        let hasRight = false;
-        const courseProductTemplates = rowCourse.get('productTemplates');
-
-        courseProductTemplates.forEach(r => {
-          userValidProducts.forEach(s => {
-            if (s.get('template').id == r.id) {
-              hasRight = true;
-            }
-          })
-        });
-
-        if(!hasRight) {
-          toast.error("Vous ne disposez pas de l'abonnement/des tickets nécessaire(s) pour réserver ce cours.")
-          that.setState({ isFetching: false, isCalling: true }, function () { that.getCourses() })
-          return;
-        }
-
-        const { courses } = that.state;
-
-        let mBooking = null;
-        // check if there's already a booking for this course and this user
-        rowCourse.bookings.forEach(eachBooking => {
-          if (eachBooking.userId === user.id) {
-            mBooking = eachBooking
-          }
-        })
-        if (mBooking) {
-          mBooking.set('dateBooking', new Date())
-          mBooking.set('waiting', false)
-          mBooking.set('canceled', false)
-          mBooking.save()
-          .then( myObject => {
-
-            if (courseProductTemplates && courseProductTemplates.length > 0) {
-
-              const queryProductSubtract = new Parse.Query(Product)
-              .equalTo('client', that.state.user)
-              .equalTo('club', that.state.club)
-              .descending('createdAt')
-              .equalTo('type', 'PRODUCT_TYPE_TICKET')
-              .greaterThanOrEqualTo('expireAt', moment().toDate())
-              .greaterThan('credit', 0);
-
-              const queryProductSubtract2 = new Parse.Query(Product)
-              .equalTo('client', that.state.user)
-              .equalTo('club', that.state.club)
-              .descending('createdAt')
-              .equalTo('type', 'PRODUCT_TYPE_TICKET')
-              .doesNotExist('expireAt')
-              .greaterThan('credit', 0);
-
-              Parse.Query.or(queryProductSubtract, queryProductSubtract2)
-              .first()
-              .then(toSubtract => {
-                if (toSubtract) {
-                  toSubtract.set('credit', toSubtract.get('credit') - creditsCost)
-                  toSubtract.save()
-                  .then( () => {
-                    toast.success("Votre réservation a bien été acceptée")
-                    that.setState({ isFetching: false, isCalling: true }, function () { that.getCourses() })
-                  })
-                } else {
-                  toast.success("Votre réservation a bien été acceptée")
-                  that.setState({ isFetching: false, isCalling: true }, function () { that.getCourses() })
-                }
-              })
-            }
-            else {
-              toast.success("Votre réservation a bien été acceptée")
-              that.setState({ isFetching: false, isCalling: true }, function () { that.getCourses() })
-            }
-          })
-        } else {
-          const booking = new Booking()
-          booking.set('dateBooking', new Date())
-          booking.set('waiting', false)
-          booking.set('canceled', false)
-          booking.set('client', Client.createWithoutData(getItem('user').id))
-          booking.set('cours', rowCourse)
-          booking.set('courseName', rowCourse.get('name'))
-          booking.set('dateCourse', rowCourse.get('date'))
-          booking.save()
-          .then( () => {
-            if ( !courseProductTemplates || !courseProductTemplates.length ) {
-              toast.success("Votre réservation a bien été acceptée")
-              that.setState({ isFetching: false, isCalling: true }, function () { that.getCourses() })
-            } else {
-              const queryProductSubtract = new Parse.Query(Product)
-              .equalTo('client', that.state.user)
-              .equalTo('club', that.state.club)
-              .descending('createdAt')
-              .equalTo('type', 'PRODUCT_TYPE_TICKET')
-              .greaterThanOrEqualTo('expireAt', moment().toDate())
-              .greaterThan('credit', 0)
-              ;
-
-              const queryProductSubtract2 = new Parse.Query(Product)
-              .equalTo('client', that.state.user)
-              .equalTo('club', that.state.club)
-              .descending('createdAt')
-              .equalTo('type', 'PRODUCT_TYPE_TICKET')
-              .doesNotExist('expireAt')
-              .greaterThan('credit', 0)
-              ;
-
-              Parse.Query.or(queryProductSubtract, queryProductSubtract2)
-              .first()
-              .then(toSubtract => {
-                if (toSubtract) {
-                  toSubtract.set('credit', toSubtract.get('credit') - creditsCost)
-                  toSubtract.save()
-                  .then( () => {
-                    toast.success("Votre réservation a bien été acceptée")
-                    that.setState({ isFetching: false, isCalling: true }, function () { that.getCourses() })
-                  })
-                } else {
-                  toast.success("Votre réservation a bien été acceptée")
-                  that.setState({ isFetching: false, isCalling: true }, function () { that.getCourses() })
-                }
-              })
-            }
-          })
-        }
-      })
-      .catch( error => {
-        console.error(error)
-      })
-      ;
-    }
-
-    else { // logic w/o products rules
-
-      const { courses } = that.state
-
-      // check if there's already a booking for this course and this user
-      let mBooking = null
-      rowCourse.bookings.forEach(eachBooking => {
-        if (eachBooking.userId === user.id) {
-          mBooking = eachBooking
-        }
-      })
-      if (mBooking) {
-        mBooking.set('dateBooking', new Date())
-        mBooking.set('waiting', false)
-        mBooking.set('canceled', false)
-        mBooking.save()
-        .then( () => {
-          toast.success("Votre réservation a bien été acceptée !")
-          that.setState({ isFetching: false, isCalling: true }, function () { that.getCourses() })
-        })
-      }
-      else {
-        const booking = new Booking()
-        booking.set('dateBooking', new Date())
-        booking.set('waiting', false)
-        booking.set('canceled', false)
-        booking.set('client', Client.createWithoutData(getItem('user').id))
-        booking.set('cours', rowCourse)
-        booking.set('courseName', rowCourse.get('name'))
-        booking.set('dateCourse', rowCourse.get('date'))
-        booking.save()
-        .then( () => {
-          toast.success("Votre réservation a bien été acceptée !")
-          that.setState({ isFetching: false, isCalling: true }, function () { that.getCourses() })
-        })
-      }
-
-    }
-  }
-
-  handleUnbook(rowCourse) {
-    if ( this.state.isFetching) return;
-    this.setState({ isFetching: true })
-
-    const that = this;
-    const { courses } = this.state;
-    const creditsCost = rowCourse.get('creditsCost');
-    const user = JSON.parse(localStorage.getItem('user'));
-
-    let waitingList = rowCourse.bookings.filter(o => o.get('waiting') && !o.get('canceled') );
-
-    waitingList.sort(function (a, b) {
-      return new Date(b.get('createdAt')) - new Date(a.get('createdAt'));
-    });
-
-    rowCourse.bookings.filter(b => b.userId === user.id)
-    .forEach(b => {
-      b.set("canceled", true);
-      b.set("waiting", false);
-      b.set("dateCanceled", new Date());
-      b.save()
-      .then((result) => {
-        // if there's a product rule, the next booking can only be taken in "shotgun mode" - first arrived, first served
-        // so we notify all clients on the waiting list
-
-        if (rowCourse.productTemplates && rowCourse.productTemplates.length > 0) {
-          const queryProductAdd = new Parse.Query(Product)
-          .equalTo('client', that.state.user)
-          .equalTo('club', that.state.club)
-          .descending('createdAt')
-          .equalTo('type', 'PRODUCT_TYPE_TICKET')
-          .greaterThanOrEqualTo('expireAt', moment().toDate())
-          .greaterThan('credit', 0)
-
-          const queryProductAdd2 = new Parse.Query(Product)
-          .equalTo('client', that.state.user)
-          .equalTo('club', that.state.club)
-          .descending('createdAt')
-          .equalTo('type', 'PRODUCT_TYPE_TICKET')
-          .doesNotExist('expireAt')
-          .greaterThan('credit', 0)
-
-          Parse.Query.or(queryProductAdd, queryProductAdd2)
-          .first()
-          .then(toAdd => {
-            if (toAdd) {
-              toAdd.set('credit', toAdd.get('credit') + creditsCost)
-              toAdd.save().then(added => {
-                if (waitingList.length > 0) {that.sendWaitingListAlert(waitingList)}
-                else {
-                  toast.success("Votre réservation a bien été annulée")
-                  that.setState({ isFetching: false, isCalling: true }, function () { that.getCourses() })
-                }
-              })
-            }
-            else {
-              if (waitingList.length > 0) {that.sendWaitingListAlert(waitingList)}
-              else {
-                toast.success("Votre réservation a bien été annulée")
-                that.setState({ isFetching: false, isCalling: true }, function () { that.getCourses() })
-              }
-            }
-          })
-        }
-        else {
-          // no products - automatically book first guy on the list AND alert him w/ a push notification
-          if (waitingList.length > 0) {
-            let listRecipients = []
-            let oldest = waitingList[0]
-            listRecipients.push(oldest)
-            oldest.set("canceled", false);
-            oldest.set("waiting", false);
-            oldest.set("dateBooking", new Date());
-            // insert waiting item in current booking list
-            oldest.save().then((result) => {
-              // warn the guy
-              that.sendWaitingListAlert(listRecipients)
-            })
-          }
-          else {
-            toast.success("Votre réservation a bien été annulée.")
-            that.setState({ isFetching: false, isCalling: true }, function () { that.getCourses() })
-          }
-        }
-      })
+    fetch(`/api/booking/${id}`, { 
+      method:'DELETE',
     })
-  }
-
-  handleWait(rowCourse) {
-    if ( this.state.isFetching) return;
-    this.setState({ isFetching: true })
-
-    const that = this
-    const courseProductTemplates = rowCourse.get('productTemplates')
-    const creditsCost = rowCourse.get('creditsCost')
-    const user = JSON.parse(localStorage.getItem('user'))
-
-
-    if (courseProductTemplates && courseProductTemplates.length > 0) {
-
-      const { user, club } = that.state
-
-      let queryUserSubProducts1 = new Parse.Query("Product")
-      .equalTo("type", 'PRODUCT_TYPE_SUBSCRIPTION')
-      .greaterThanOrEqualTo('expireAt', moment().toDate())
-
-      let queryUserSubProducts2 = new Parse.Query("Product")
-      .equalTo("type", 'PRODUCT_TYPE_SUBSCRIPTION')
-      .doesNotExist('expireAt')
-      ;
-
-      let mainQuerySub = Parse.Query.or(queryUserSubProducts1, queryUserSubProducts2)
-
-      let queryUserTicketProducts1 = new Parse.Query("Product")
-      .descending('createdAt')
-      .equalTo('type', 'PRODUCT_TYPE_TICKET')
-      .greaterThanOrEqualTo('expireAt', moment().toDate())
-      .greaterThan('credit', 0)
-      ;
-
-      let queryUserTicketProducts2 = new Parse.Query("Product")
-      .descending('createdAt')
-      .equalTo('type', 'PRODUCT_TYPE_TICKET')
-      .doesNotExist('expireAt')
-      .greaterThan('credit', 0)
-      ;
-
-      let mainQueryTicket = Parse.Query.or(queryUserTicketProducts1, queryUserTicketProducts2)
-
-      Parse.Query.or(mainQuerySub, mainQueryTicket)
-      .equalTo('client', that.state.user)
-      .equalTo('club', that.state.club)
-      .find()
-      .then( userValidProducts => {
-        let hasRight = false
-        const courseProductTemplates = rowCourse.get('productTemplates')
-
-        courseProductTemplates.forEach(r => {
-          userValidProducts.forEach(s => {
-            if (s.get('template').id == r.id) {
-              hasRight = true
-            }
-          })
-        })
-
-        if (hasRight) {
-
-          const { courses } = that.state
-
-          const booking = new Booking()
-          booking.set('dateQueue', new Date())
-          booking.set('waiting', true)
-          booking.set('canceled', false)
-          booking.set('client', Client.createWithoutData(getItem('user').id))
-          booking.set('cours', rowCourse)
-          booking.set('courseName', rowCourse.get('name'))
-          booking.set('dateCourse', rowCourse.get('date'))
-
-          // check if there's already a booking for this course and this user
-          let mBooking = null
-          rowCourse.bookings.forEach(eachBooking => {
-            if (eachBooking.userId === user.id) {
-              mBooking = eachBooking
-            }
-          })
-          if (mBooking) {
-
-            mBooking.set('dateQueue', new Date())
-            mBooking.set('waiting', true)
-            mBooking.set('canceled', false)
-            mBooking.save()
-            .then( () => {
-              toast.success("Vous êtes maintenant en liste d'attente")
-              that.setState({ isFetching: false, isCalling: true }, function () { that.getCourses() })
-            })
-          }
-          else {
-            const booking = new Booking()
-            booking.set('dateQueue', new Date())
-            booking.set('waiting', true)
-            booking.set('canceled', false)
-            booking.set('client', Client.createWithoutData(getItem('user').id))
-            booking.set('cours', rowCourse)
-            booking.set('courseName', rowCourse.get('name'))
-            booking.set('dateCourse', rowCourse.get('date'))
-            booking.save()
-            .then( () => {
-              toast.success("Vous êtes maintenant en liste d'attente")
-              that.setState({ isFetching: false, isCalling: true }, function () { that.getCourses() })
-            })
-          }
-        }
-        else {
-          toast.error("Vous ne disposez pas de l'abonnement/des tickets nécessaire(s) pour vous mettre en liste d'attente.")
-          that.setState({ isFetching: false, isCalling: true }, function () { that.getCourses() })
-        }
-      })
-      .catch( error => {
-        console.log(error)
-      })
-    }
-    else {
-      const { courses } = that.state;
-      // check if there's already a booking for this course and this user
-      let mBooking = rowCourse.bookings.find(b => b.userId === user.id);
-      if (mBooking) {
-        mBooking.set('dateQueue', new Date());
-        mBooking.set('waiting', true);
-        mBooking.set('canceled', false);
-        mBooking.save()
-        .then( () => {
-          toast.success("Vous avez bien rejoint la liste d'attente.");
-          that.setState({ isFetching: false, isCalling: true }, function () { that.getCourses() });
-        })
+    .then( result => {
+      if(result.status === 204) {
+        toast.success("Votre annulation a bien été acceptée");
+        return;
       }
-      else {
-        const booking = new Booking();
-        booking.set('dateQueue', new Date());
-        booking.set('waiting', true);
-        booking.set('canceled', false);
-        booking.set('client', Client.createWithoutData(getItem('user').id));
-        booking.set('cours', rowCourse);
-        booking.set('courseName', rowCourse.get('name'));
-        booking.set('dateCourse', rowCourse.get('date'));
-        booking.save()
-        .then( () => {
-          toast.success("Vous avez bien rejoint la liste d'attente.");
-          that.setState({ isFetching: false, isCalling: true }, function () { that.getCourses() });
-        })
-      }
-    }
-  }
-
-  handleUnwait(rowCourse) {
-    if ( this.state.isFetching) return;
-    this.setState({ isFetching: true })
-
-    const that = this
-    const user = JSON.parse(localStorage.getItem('user'))
-
-    const { courses } = this.state
-
-    rowCourse.bookings.filter(b => b.userId === user.id)
-    .forEach(b => {
-      b.set("canceled", true);
-      b.set("waiting", false);
-      b.set("dateCanceled", new Date());
-      b.save()
-      .then( result => {
-        toast.success("Vous n'êtes plus sur la liste d'attente.");
-        that.setState({ isFetching: false, isCalling: true }, function () { that.getCourses() });
+      return result.json()
+      .then( js => {
+        toast.error(js.userMsg || "L'annulation a échouée");
       })
-      .catch(e => {
-        console.error(e);
-      })
-      ;
-    })
-    ;
-  }
-
-  sendWaitingListAlert(bookings) {
-    let course = bookings[0].get('cours')
-    let recipients = bookings.map(b => b.get('client').id );
-
-    const that = this;
-    const clubObjectId = JSON.parse(localStorage.getItem('club')).id;
-    let alert = null;
-    if (bookings.length>1){
-      alert = `🎉 Une place s'est libérée pour le cours de ` + course.get('name') + `. `
-      + `Réservez votre place si vous souhaitez venir !`
-      ;
-    }
-    else {
-      alert = `🎉 Une place s'est libérée pour le cours de ` + course.get('name') + `. `
-      + `Votre place a été réservée automatiquement comme vous étiez sur liste d'attente. Pensez à annuler si vous ne pouvez plus assister au cours.`
-      ;
-    }
-
-    let queryInstallation = new Parse.Query(Parse.Installation)
-    .containedIn('clientObjectId', recipients)
-    .equalTo('clubObjectId', clubObjectId)
-    ;
-
-    Parse.Push.send(
-      {
-        where: queryInstallation,
-        data: {
-          alert,
-          badge: 1,
-          sound: 'default'
-        }
-      },
-      { useMasterKey: true }
-    )
-    .then( () => {
-      
-      const Club = Parse.Object.extend('Club')
-      const Notification = Parse.Object.extend('Notification')
-
-      let notification = new Notification()
-      notification.set('clients', recipients)
-      notification.set('date', new Date())
-      notification.set('club', Club.createWithoutData(clubObjectId))
-      notification.set('alert', alert)
-      notification.set('labels', ['A un ou plusieurs adhérents'])
-
-      return notification
-      .save()
-      .then( () => {
-        toast.success("Votre réservation a bien été annulée.")
-        that.setState({ isFetching: false, isCalling: true }, function () { that.getCourses() })
-      })
-      ;
     })
     .catch( e => {
-      console.log('Push error', e);
+      console.error(e);
+      toast.error("L'annulation a échouée");
     })
+    .finally( () => this.setState({ isFetching: false }, function () { that.getCourses() }) )
     ;
   }
 
@@ -940,7 +436,7 @@ export default class Planning extends Component {
                 handleBook={this.handleBook}
                 handleUnbook={this.handleUnbook}
                 handleWait={this.handleWait}
-                handleUnwait={this.handleUnwait}
+                handleUnwait={this.handleUnbook}
                 isFetching={this.state.isFetching}
                 color={getItem('club').color}
               />

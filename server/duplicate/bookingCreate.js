@@ -1,23 +1,13 @@
-const Parse = require('parse/node');
-const {fixFalseUTC} = require('./date');
 const moment = require('moment-timezone');
+const {fixFalseUTC} = require('./date');
 
-const config = {
-  serverURL: 'https://club-connect-parse-server.herokuapp.com/parse',
-  appId: 'vj84kC1bckQ8VVeCPDUf',
-  clientId: 'V4GJLX5Vh0ZpOyMfpJ0m',
-  JSId: 'bKs82bwRSPA8C8yTV7jB',
-  masterKey: 'bKs82bwRSPA8C8yTV7jB'
-};
-
-Parse.initialize(config.appId, config.clientId, config.JSId);
-Parse.serverURL = config.serverURL;
-Parse.masterKey = config.masterKey;
-
+const Parse = require('./parse');
 const Cours = Parse.Object.extend('Cours');
 const Booking = Parse.Object.extend('Booking');
 const Client = Parse.Object.extend('Client');
 const Club = Parse.Object.extend('Club');
+
+module.exports = bookingCreate;
 
 const getClassById = (id) => {
 	return new Parse.Query(Cours)
@@ -36,9 +26,8 @@ const getClassById = (id) => {
 	});
 };
 
-module.exports = bookingCreate;
 
-function bookingCreate (courseId, userId){
+function bookingCreate (courseId, userId, waiting){
 	const now = Date.now();
 
 	return getClassById(courseId)
@@ -47,7 +36,8 @@ function bookingCreate (courseId, userId){
 			return Promise.reject({
 				statusCode : 409,
 				restCode   : 'cannotBook',
-				reason: 'TOO_EARLY_TO_BOOK'
+				reason: 'TOO_EARLY_TO_BOOK',
+				userMsg: 'Les réservations ne sont pas encore ouvertes'
 			});
 		}
 
@@ -55,7 +45,8 @@ function bookingCreate (courseId, userId){
 			return Promise.reject({
 				statusCode : 409,
 				restCode   : 'cannotBook',
-				reason: 'TOO_LATE_TO_BOOK'
+				reason: 'TOO_LATE_TO_BOOK',
+				userMsg: 'Les réservations sont fermées'
 			});
 		}
 
@@ -63,7 +54,8 @@ function bookingCreate (courseId, userId){
 			return Promise.reject({
 				statusCode : 409,
 				restCode   : 'cannotBook',
-				reason: 'PAST_CLASS'
+				reason: 'PAST_CLASS',
+				userMsg: 'Ce cours a déjà commencé'
 			});
 		}
 
@@ -93,7 +85,8 @@ function bookingCreate (courseId, userId){
 			return Promise.reject({
 				statusCode : 409,
 				restCode   : 'cannotBook',
-				reason: 'WEEK_LIMIT_REACHED'
+				reason: 'WEEK_LIMIT_REACHED',
+				userMsg: `Ce cours est limité à ${limit} par semaine`
 			});
 		})
 		;
@@ -122,7 +115,8 @@ function bookingCreate (courseId, userId){
 			return Promise.reject({
 				statusCode : 409,
 				restCode   : 'cannotBook',
-				reason: 'MONTH_LIMIT_REACHED'
+				reason: 'MONTH_LIMIT_REACHED',
+				userMsg: `Ce cours est limité à ${limit} par mois`
 			});
 		})
 		;
@@ -140,34 +134,52 @@ function bookingCreate (courseId, userId){
 		let activeBookings = bookings.filter( b=> !b.get('waiting') && !b.get('canceled'));
 		let bookingLimit = cours.get('bookingLimit');
 		if (bookingLimit && activeBookings.length >= bookingLimit) {
-			return Promise.reject({
-				statusCode : 409,
-				restCode   : 'cannotBook',
-				reason: 'FULL_BEFORE'
-			});
+			
+			if ( !waiting ) {
+				return Promise.reject({
+					statusCode : 409,
+					restCode   : 'cannotBook',
+					reason: 'FULL_BEFORE',
+					userMsg: 'Ce cours est complet'
+				});
+			} else if ( !cours.get('waitingListEnabled') ) {
+				return Promise.reject({
+					statusCode : 409,
+					restCode   : 'cannotBook',
+					reason: 'WAITING_LIST_NOT_ENABLED',
+					userMsg: "Pas de liste d'attente pour ce cours"
+				});
+			}
 		}
 
 		let booking = new Booking();
 		let userBookings = bookings.filter( b => b.get('client').id === userId );
 		
 		if (userBookings.length) {
-			//FARV: we should ensure there is a most 1 booking for the gived user !
 			booking = userBookings[0];
+			//FARV: OK we cannot patch everything at once so this is a little trick... temporary... you know what I mean :D
+			userBookings.slice(1).forEach( b => b.destroy().catch(e => console.error(e)) );
 		}
+
 		const user = Client.createWithoutData(userId);
+		booking.set('client', user);
+		booking.set('cours', cours);
 		booking.set('dateCourse', cours.get('date'));
 		booking.set('courseName', cours.get('name'));
-		booking.set('dateBooking', new Date());
-		booking.set('cours', cours);
-		booking.set('client', user);
-		booking.set('waiting', false);
 		booking.set('canceled', false);
+		
+		booking.set('waiting', waiting);
+		!waiting && booking.set('dateBooking', new Date());
+		waiting && booking.set('dateQueue', new Date() );
+
 		return booking.save()
 		.then( created => {
 			return { created, cours, bookings};
 		})
 	})
 	.then( ({ created, cours, bookings}) => {
+		if(waiting) return created;
+
 		return new Parse.Query(Booking)
 		.equalTo('cours', cours)
 		.equalTo('waiting', false)
@@ -175,6 +187,7 @@ function bookingCreate (courseId, userId){
 		.count()
 		.then(count => {
 			let bookingLimit = cours.get('bookingLimit');
+
 			if ( count <= bookingLimit ) return created;
 
 			return booking.destroy()
@@ -182,7 +195,8 @@ function bookingCreate (courseId, userId){
 				return Promise.reject({
 					statusCode : 409,
 					restCode   : 'cannotBook',
-					reason: 'FULL_BEFORE'
+					reason: 'FULL_BEFORE',
+					userMsg: 'Ce cours est complet'
 				});
 			})
 			;
