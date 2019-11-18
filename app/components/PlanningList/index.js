@@ -142,7 +142,7 @@ export default class PlanningResamaniaList extends Component {
 
     return (
       <div className="PlanningResamania_list" style={{ paddingTop: isFilterListVisible ? '0' : '104px' }} >
-        displayCollection
+        {displayCollection}
       </div>
     );
   }
