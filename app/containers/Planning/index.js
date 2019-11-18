@@ -294,7 +294,7 @@ export default class Planning extends Component {
     let filteredCourses = courses
     .filter( c => {
       if (filters.room === 'Toutes') return true;
-      return row.get('room') === filters.room;
+      return c.get('room') === filters.room;
     })
     .filter( c => {
       if (filters.concept === 'Tous') return true;
