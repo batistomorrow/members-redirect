@@ -43,6 +43,7 @@ export default class Bookings extends React.Component {
       .limit(100)
       .include(['cours', 'cours.club'])
       .equalTo('client', user)
+      .containedIn('cours.club', allClubs )
       .find()
       .then(bookings => {
         return new Parse.Query(Product)
