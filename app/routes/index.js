@@ -27,25 +27,12 @@ export const routes = [
     position: 'top',
     component: () => <Planning />
   },
-  // {
-  //   path: '/notifications',
-  //   name: 'Notifications',
-  //   exact: true,
-  //   position: 'top',
-  //   component: () => <Notifications />
-  // },
   {
     path: '/bookings',
     name: 'Réservations',
     exact: true,
     position: 'top',
     component: () => <Bookings />
-  },
-  // {
-  //   path: '/settings',
-  //   name: 'Paramètres',
-  //   exact: true,
-  //   position: 'bottom',
-  //   component: () => <Settings />
-  // }
+  }
 ]
+;
