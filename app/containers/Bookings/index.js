@@ -26,22 +26,37 @@ export default class Bookings extends React.Component {
     this.setState({ isLoading : true });
 
     const { club, user } = this.state;
-    return new Parse.Query(Booking)
-    .limit(100)
-    .include('cours')
-    .equalTo('client', user)
-    .find()
-    .then(bookings => {
-      return new Parse.Query(Product)
-      .limit(100)
-      .equalTo('club', club).equalTo('client', user)
-      .include('template')
+
+    return Promise.resolve()
+    .then( () => {
+      let r = club.get('relatedCompanies');
+      if( ! r || !r.length ) {
+        return [club];
+      }
+      return new Parse.Query(Club)
+      .containedIn('objectId', r.map(c=>c.id).concat(club.get('id')) )
       .find()
-      .then(products => {
-        this.setState({ bookings, products, isLoading:false });
-      })
       ;
     })
+    .then( allClubs => {
+      return new Parse.Query(Booking)
+      .limit(100)
+      .include(['cours', 'cours.club'])
+      .equalTo('client', user)
+      .find()
+      .then(bookings => {
+        return new Parse.Query(Product)
+        .limit(100)
+        .containedIn('club', allClubs)
+        .equalTo('client', user)
+        .include('template')
+        .find()
+        .then(products => {
+          this.setState({ bookings, products, isLoading:false });
+        })
+        ;
+      })
+    })    
     .catch( e => {
       console.error(e);
     })
@@ -259,6 +274,7 @@ export default class Bookings extends React.Component {
                         {row.get('cours').get('name')} - {coursDate.format('L')} à{' '}
                         {coursDate.format('LT')}
                       </p>
+                      <p>{row.get('cours').get('club').get('name')}</p>
                       <p>
                         Réservation effectuée le {moment(row.get('dateBooking')).format('L')} à{' '}
                         {moment(row.get('dateBooking')).format('LT')}.
@@ -276,6 +292,7 @@ export default class Bookings extends React.Component {
                         {row.get('cours').get('name')} - {coursDate.format('L')} à{' '}
                         {coursDate.format('LT')}
                       </p>
+                      <p>{row.get('cours').get('club').get('name')}</p>
                       <p>
                         Réservation effectuée le {moment(row.get('dateBooking')).format('L')} à{' '}
                         {moment(row.get('dateBooking')).format('LT')}.

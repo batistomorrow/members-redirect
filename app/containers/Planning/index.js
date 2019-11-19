@@ -32,7 +32,8 @@ export default class Planning extends Component {
       concepts: [],
       filters: {
         room: 'Toutes',
-        concept: 'Tous'
+        concept: 'Tous',
+        place : 'Tous'
       },
       date: moment(),
       isCalling: true,
@@ -46,40 +47,50 @@ export default class Planning extends Component {
     this.handleBook = this.handleBook.bind(this)
     this.handleUnbook = this.handleUnbook.bind(this)
     this.handleWait = this.handleWait.bind(this)
+    this.getClient = this.getClient.bind(this);
 
     moment.locale('fr')
   }
 
   componentWillMount() {
-
-    const that = this
-    // that.getFilters()
-    that.getClient()
+    this.getClient();
   }
 
   getFilters() {
-
-    const that = this
-
+    const that = this;
     let queryClub = new Parse.Query(Club)
     .equalTo('objectId', that.state.club.id)
     .first()
     .then(club => {
-
+      let r = club.get('relatedCompanies');
+      if( ! r || !r.length ) {
+        return {club, relatedClubs:[]};
+      }
+      return new Parse.Query(Club)
+      .containedIn('objectId', r.map(c=>c.id) )
+      .find()
+      .then( relatedClubs => {
+        return {club, relatedClubs}
+      });
+    })
+    .then( ({club,relatedClubs}) => {
+      let clubs = [that.state.club].concat(that.state.relatedClubs);
       return new Parse.Query(CoursTemplate)
-      .equalTo('club', that.state.club)
+      .containedIn('club', [that.state.club].concat(that.state.relatedClubs))
       .limit(1000)
       .ascending('name')
       .find()
       .then(conceptsList => {
         const concepts = conceptsList.map(row => row.get('name') );
         const initialRoom = club.get('initialRoom');
-        const rooms = club.get('classesRooms');
+        const rooms = relatedClubs.map( c => c.get('classesRooms') ).flat();
         that.setState({
+          relatedClubs: relatedClubs,
           rooms: rooms,
           filters: {
             room: initialRoom && Number.isInteger(initialRoom) ? rooms[initialRoom] : 'Toutes',
-            concept: 'Tous'
+            concept: 'Tous',
+            place : club.get('name')
           },
           concepts
         }, () => that.getCourses())
@@ -118,7 +129,7 @@ export default class Planning extends Component {
     const user = JSON.parse(localStorage.getItem('user'))
 
     new Parse.Query(Cours)
-    .equalTo('club', that.state.club)
+    .containedIn('club', [that.state.club].concat(that.state.relatedClubs))
     .greaterThanOrEqualTo('date', date.startOf('d').toDate())
     .lessThan('date', date.endOf('d').toDate())
     .ascending('date')
@@ -285,7 +296,7 @@ export default class Planning extends Component {
 
   render() {
 
-    const { isCalling, courses, rooms, concepts, filters, date, focused, isFilterListVisible } = this.state
+    const { isCalling, club, relatedClubs, courses, rooms, concepts, filters, date, focused, isFilterListVisible } = this.state
 
     if (isCalling) {
       return <div>Chargement</div>
@@ -300,27 +311,33 @@ export default class Planning extends Component {
       if (filters.concept === 'Tous') return true;
       return c.get('name') === filters.concept;
     })
+    .filter( c => {
+      if (filters.place === 'Tous') return true;
+      return c.get('club').get('name') === filters.place;
+    })
     ;
 
     // Create room's filters
     const roomFilters = rooms
-      .map((rowRoom) => {
-        return (
-          <option key={rowRoom} value={rowRoom}>
-            {rowRoom}
-          </option>
-        )
-      })
+    .map((rowRoom) => {
+      return (
+        <option key={rowRoom} value={rowRoom}>
+          {rowRoom}
+        </option>
+      )
+    });
 
     // Create courses' filters
     const conceptFilter = concepts
-      .map((rowCourse) => {
-        return (
-          <option key={rowCourse} value={rowCourse}>
-            {rowCourse}
-          </option>
-        )
-      })
+    .map((rowCourse) => {
+      return (
+        <option key={rowCourse} value={rowCourse}>
+          {rowCourse}
+        </option>
+      )
+    });
+
+    const placeFilter = relatedClubs.length && relatedClubs.map( (c,i) => <option key={i} value={c.get('name')}>{c.get('name')}</option> );
 
     return (
       <div className={'Planning MainContainer'}>
@@ -382,6 +399,26 @@ export default class Planning extends Component {
         {isFilterListVisible ? (
           <div>
             <div className={'Planning_filters'}>
+              {placeFilter && (
+                  <div className={'Planning_filters--item'}>
+                  <label
+                    htmlFor="place"
+                    onClick={this.handleLabelClick.bind(this, 'placeFilter')}
+                  >
+                    Club
+                  </label>
+                  <select
+                    className={'right'}
+                    ref={'placeFilter'}
+                    value={filters.place}
+                    name="place"
+                    onChange={this.handleSelectChange}
+                  >
+                    <option value="Tous">Tous</option>
+                    {placeFilter}
+                  </select>
+                </div>
+              )}
               <div className={'Planning_filters--item'}>
                 <label
                   htmlFor="room"

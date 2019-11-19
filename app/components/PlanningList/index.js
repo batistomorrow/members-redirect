@@ -117,6 +117,7 @@ export default class PlanningResamaniaList extends Component {
               <div className={'course'}>
                 <p>{cours.get('name')}</p>
               </div>
+              <p>{cours.get('club').get('name')}</p>
               <div className={'schedules'}>
                 <p>
                   {moment(cours.get('date'))
