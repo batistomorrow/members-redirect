@@ -152,6 +152,52 @@ function bookingCreate (courseId, userId, waiting){
 			}
 		}
 
+		return {cours, bookings};
+	})
+	.then( ({cours, bookings}) => {
+
+		const courseProductTemplates = rowCourse.get('productTemplates');
+		if(!courseProductTemplates)
+			return Promise.resolve({cours, bookings});
+
+		return Parse.Query.or(
+			new Parse.Query("Product").doesNotExist('expireAt')
+			,  new Parse.Query("Product").greaterThanOrEqualTo('expireAt', moment().toDate())
+		)
+		.equalTo('client', client)
+		.equalTo('club', club)
+		.find()
+		.then(userProducts => {
+			let creditsCost = cours.get('creditsCost');
+
+			let match = courseProductTemplates
+			.find(pt => {
+				userProducts.some( up => {
+					return up.id === pt.get('template').id
+					&& (
+						up.get('type') === 'PRODUCT_TYPE_SUBSCRIPTION'
+						|| ( up.get('credits') >= creditsCost )
+					);
+				})
+			});
+
+			if(!match) {
+				return Promise.reject({
+					statusCode : 409,
+					restCode   : 'cannotBook',
+					reason: 'MISSING_SUBSCRIPTION_REQUIREMENT',
+					userMsg: "Vous ne disposez pas de l'abonnement/des tickets nécessaire(s) pour réserver ce cours."
+				});
+			}
+
+			if( match.get('type') !== 'PRODUCT_TYPE_TICKET' || !creditsCost ){
+				return Promise.resolve({cours, bookings});
+			}
+
+			return Promise.resolve({cours, bookings, makePayment: () => { return match.set('credit', match.get('credit') - creditsCost).save();} );
+		});
+	})
+	.then( ({cours, bookings, makePayment}) => {
 		let booking = new Booking();
 		let userBookings = bookings.filter( b => b.get('client').id === userId );
 		
@@ -174,10 +220,10 @@ function bookingCreate (courseId, userId, waiting){
 
 		return booking.save()
 		.then( created => {
-			return { created, cours, bookings};
+			return { created, cours, bookings, makePayment};
 		})
 	})
-	.then( ({ created, cours, bookings}) => {
+	.then( ({ created, cours, bookings, makePayment}) => {
 		if(waiting) return created;
 
 		return new Parse.Query(Booking)
@@ -188,17 +234,21 @@ function bookingCreate (courseId, userId, waiting){
 		.then(count => {
 			let bookingLimit = cours.get('bookingLimit');
 
-			if ( count <= bookingLimit ) return created;
 
-			return booking.destroy()
-			.then( () => {
-				return Promise.reject({
-					statusCode : 409,
-					restCode   : 'cannotBook',
-					reason: 'FULL_BEFORE',
-					userMsg: 'Ce cours est complet'
-				});
-			})
+			if ( count > bookingLimit )
+				return booking.destroy()
+				.then( () => {
+					return Promise.reject({
+						statusCode : 409,
+						restCode   : 'cannotBook',
+						reason: 'FULL_BEFORE',
+						userMsg: 'Ce cours est complet'
+					});
+				})
+				;
+
+			return makePayment
+			.then( () => created)
 			;
 		})
 	})
