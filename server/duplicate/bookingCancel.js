@@ -6,8 +6,11 @@ module.exports = bookingCancel;
 function bookingCancel(id) {
 	return new 	Parse.Query(Booking)
 	.equalTo('objectId', id)
+	.include('product')
 	.first()
 	.then( b => {
+		//TODO cannot cancel if past class !
+
 		if(!b) {
 			return Promise.reject({
 				statusCode  : 404,
@@ -18,9 +21,36 @@ function bookingCancel(id) {
 				}
 			});
 		}
+		if(b.get('canceled')){
+			return Promise.reject({
+				statusCode  : 409,
+				restCode  : 'resourceGone',
+				resource  : {
+					type : 'Booking',
+					id   : id
+				}
+			});	
+		}
 		b.set('canceled', true);
-		b.set("dateCanceled", new Date());
-		return b.save();
+		b.set("dateCanceled", new Date() );
+		b.set('repaymentDate', new Date() );
+		
+		return b.save()
+		.then( canceled => {
+			let product = b.get('product');
+			let credit = b.get('credit');
+			if( !credit || !product ){
+				return canceled;
+			}
+			product
+			.set('credit', product.get('credit') + credit)
+			.save()
+			.then( () => {
+				return canceled;
+			})
+			;
+		});
+
 	})
 	;
 }

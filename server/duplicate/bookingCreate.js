@@ -155,8 +155,19 @@ function bookingCreate (courseId, userId, waiting){
 		return {cours, bookings};
 	})
 	.then( ({cours, bookings}) => {
+		if( bookings.some( b => b.get('client').id === userId && b.get('canceled') === false) ) {
+			return Promise.reject({
+				statusCode : 409,
+				restCode   : 'cannotBook',
+				reason: 'ALREADY_BOOKED',
+				userMsg: 'Vous avez déjà une réservation pour ce cours'
+			});
+		}
 
-		const courseProductTemplates = rowCourse.get('productTemplates');
+		return {cours, bookings};
+	})
+	.then( ({cours, bookings}) => {
+		const courseProductTemplates = cours.get('productTemplates');
 		if(!courseProductTemplates)
 			return Promise.resolve({cours, bookings});
 
@@ -164,19 +175,19 @@ function bookingCreate (courseId, userId, waiting){
 			new Parse.Query("Product").doesNotExist('expireAt')
 			,  new Parse.Query("Product").greaterThanOrEqualTo('expireAt', moment().toDate())
 		)
-		.equalTo('client', client)
-		.equalTo('club', club)
+		.equalTo('client', Client.createWithoutData(userId))
+		.equalTo('club', cours.get('club'))
 		.find()
 		.then(userProducts => {
 			let creditsCost = cours.get('creditsCost');
 
-			let match = courseProductTemplates
-			.find(pt => {
-				userProducts.some( up => {
-					return up.id === pt.get('template').id
+			let match = userProducts
+			.find( product => {
+				return courseProductTemplates.some( template => {
+					return product.get('template').id === template.id
 					&& (
-						up.get('type') === 'PRODUCT_TYPE_SUBSCRIPTION'
-						|| ( up.get('credits') >= creditsCost )
+						product.get('type') === 'PRODUCT_TYPE_SUBSCRIPTION'
+						|| ( product.get('credit') >= creditsCost )
 					);
 				})
 			});
@@ -194,10 +205,15 @@ function bookingCreate (courseId, userId, waiting){
 				return Promise.resolve({cours, bookings});
 			}
 
-			return Promise.resolve({cours, bookings, makePayment: () => { return match.set('credit', match.get('credit') - creditsCost).save();} );
+			return Promise.resolve({
+				cours,
+				bookings,
+				creditsCost : creditsCost,
+				productToDebit: match
+			});
 		});
 	})
-	.then( ({cours, bookings, makePayment}) => {
+	.then( ({cours, bookings, creditsCost, productToDebit}) => {
 		let booking = new Booking();
 		let userBookings = bookings.filter( b => b.get('client').id === userId );
 		
@@ -214,9 +230,19 @@ function bookingCreate (courseId, userId, waiting){
 		booking.set('courseName', cours.get('name'));
 		booking.set('canceled', false);
 		
+		if(creditsCost)
+			booking.set('credit', creditsCost);
+		if(productToDebit)
+			booking.set('product', productToDebit);
+
 		booking.set('waiting', waiting);
 		!waiting && booking.set('dateBooking', new Date());
 		waiting && booking.set('dateQueue', new Date() );
+
+		let makePayment = null;
+		if(creditsCost && productToDebit){
+			makePayment = () => productToDebit.set('credit', productToDebit.get('credit') - creditsCost).save() ;
+		}
 
 		return booking.save()
 		.then( created => {
@@ -247,8 +273,14 @@ function bookingCreate (courseId, userId, waiting){
 				})
 				;
 
-			return makePayment
+			if(!makePayment) return created;
+
+			return makePayment()
 			.then( () => created)
+			.catch( e => {
+				//I'd like a transaction to rollback everything :/
+				console.error(e);
+			})
 			;
 		})
 	})
