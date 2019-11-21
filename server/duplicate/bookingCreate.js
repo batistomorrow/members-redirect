@@ -224,6 +224,7 @@ function bookingCreate (courseId, userId, waiting){
 		}
 
 		const user = Client.createWithoutData(userId);
+		booking.set('createdOn', 'member');
 		booking.set('client', user);
 		booking.set('cours', cours);
 		booking.set('dateCourse', cours.get('date'));
