@@ -20,15 +20,14 @@ export default class PlanningResamaniaList extends Component {
     const { isFetching } = this.props;
     const user = JSON.parse(localStorage.getItem('user'));
 
-    let coursDate = fixFalseUTC(rowCourse.get('date'));
-    if (!rowCourse.get('bookingEnabled')) return null;
-    if (rowCourse.get('bookingLink')) return null;
+    let coursDate = new Date(rowCourse.starts);
+    if ( !!rowCourse.bookingRules.cannotBookReason ) return null;
 
-    let clientBooking = rowCourse.bookings.find( b => b.get('client').id === user.id && !b.get('canceled') );
+    let clientBooking = rowCourse.booking;
 
     if ( clientBooking ) {
       let bId = clientBooking.id;
-      if( !clientBooking.get('waiting')) {
+      if( !clientBooking.waiting ) {
         return (
           <p onClick={() => { this.props.handleUnbook(bId) }} className={`book cancel ${isFetching ? 'disabled' : null}`} style={{ color: "#D00", borderColor: "#D00" }}>
             ANNULER
@@ -42,26 +41,28 @@ export default class PlanningResamaniaList extends Component {
         );  
       }
     } else {
-      if (rowCourse.get('bookingLimit') > rowCourse.bookings.length) {
+      if (!rowCourse.bookingRules.seats.total || rowCourse.bookingRules.seats.total > rowCourse.bookingRules.seats.total.booked) {
          return (
           <p onClick={() => { this.props.handleBook(rowCourse) }} className={`book ${isFetching ? 'disabled' : null}`} style={{ color: "#27ae60", borderColor: "#27ae60" }}>
             RÉSERVER
           </p>
         );
-      } else if ( !rowCourse.get('waitingListEnabled') ){
-        return (
-          <p className={`book cancel ${isFetching ? 'disabled' : null}`} style={{ color: '#D00', borderColor: '#D00' }}>
-            COMPLET
-          </p>
-        );
-      } else {
+      } else if ( rowCourse.bookingRules.waitingListEnabled ){
         return (
           <p onClick={() => { this.props.handleWait(rowCourse) }} className={`book cancel ${isFetching ? 'disabled' : null}`} style={{ color: '#34495e', borderColor: '#34495e' }}>
             REJOINDRE LA LISTE D'ATTENTE
           </p>
         );
+      } else {
+        return (
+          <p className={`book cancel ${isFetching ? 'disabled' : null}`} style={{ color: '#D00', borderColor: '#D00' }}>
+            COMPLET
+          </p>
+        );
       }
     }
+
+    return null;
   }
 
   render() {
@@ -95,48 +96,30 @@ export default class PlanningResamaniaList extends Component {
         >
           <div className="container">
             <React.Fragment>
-              {cours.get('pictureFileName')
+              {cours.display.picture
                 ? (
-                  <div
-                    className={'picture pictureFile'}
-                    style={{
-                      backgroundImage: `url(https://s3-eu-west-1.amazonaws.com/com.clubconnect.bucket0/${cours.get('pictureFileName')})`
-                    }}
-                  />
+                  <div className={'picture pictureFile'} style={{backgroundImage: `url(${cours.display.picture})`}} />
                 ) : (
-                  <div
-                    className={'picture'}
-                    style={{
-                      backgroundColor: `#${cours.get('hexColor')}`
-                    }}
+                  <div className={'picture'} style={{ backgroundColor: `#${cours.display.color}` }}
                   />
                 )
               }
             </React.Fragment>
-            <div className={cours.get('coach') ? 'mainContent coachAdded' : 'mainContent'}>
+            <div className={cours.coach ? 'mainContent coachAdded' : 'mainContent'}>
               <div className={'course'}>
-                <p>{cours.get('name')}</p>
+                <p>{cours.name}</p>
               </div>
-              <p>{cours.get('club').get('name')}</p>
+              <p><b>{cours.club.name}</b>{cours.room.name}</p>
               <div className={'schedules'}>
                 <p>
-                  {moment(cours.get('date'))
-                    .subtract(moment(cours.get('date')).utcOffset(), 'm')
-                    .format('HH[h]mm')}{' '}
+                  { moment(cours.starts).format('HH[h]mm')}{' '}
                   -{' '}
-                  {moment(cours.get('date'))
-                    .add(cours.get('duration'), 'm')
-                    .subtract(moment(cours.get('date')).utcOffset(), 'm')
-                    .format('HH[h]mm')}
+                  {moment(cours.ends).format('HH[h]mm')}
                 </p>
               </div>
-              {!!cours.coach && !!cours.coach.name && <div className={'coach'}> <p>avec {cours.coach.surname}</p></div> }
             </div>
           </div>
-          {this.bookingButton(cours)
-            ? <div className="bookingContainer">{this.bookingButton(cours)}</div>
-            : null
-          }
+          <div className="bookingContainer">{this.bookingButton(cours)}</div>
         </div>
       )
     });

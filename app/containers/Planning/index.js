@@ -2,20 +2,63 @@ import React, { Component } from 'react'
 import Parse from 'parse'
 import moment from 'moment'
 import 'moment/locale/fr'
-
+import Loader from '../../components/Loader/';
 import 'react-dates/initialize'
 import { SingleDatePicker } from 'react-dates'
 
 import Ionicon from 'react-ionicons'
 
 import { getItem } from 'utils/localStorage'
-import { Club, Client, Booking, Cours, CoursTemplate, Product } from 'utils/parse'
+import { Club, Client, Booking, Cours, CoursTemplate } from 'utils/parse'
 
 import PlanningList from 'components/PlanningList'
 
 import { toast } from 'react-toastify'
 
 import './style.scss'
+
+let listSeances = ({clubs, dmin, dmax})=> {
+  return fetch(`/api/seance?clubs=${clubs}&date_min=${dmin}&date_max=${dmax}`)
+  .then( result => result.json() )
+};
+
+let listBookings = ({userId}) => {
+  return fetch(`/api/booking?user=${userId}`)
+  .then( result => result.json())
+  ;
+}
+
+function loadClubsDatas(clubId) {
+  return new Parse.Query(Club)
+  .equalTo('objectId', clubId)
+  .first()
+  .then(club => {
+    let r = club.get('relatedCompanies');
+    if( ! r || !r.length ) {
+      return {club, relatedClubs:[]};
+    }
+    return new Parse.Query(Club)
+    .containedIn('objectId', r.map(c=>c.id) )
+    .find()
+    .then( relatedClubs => {
+      return {club, relatedClubs}
+    });
+  })
+  .then( ({club,relatedClubs}) => {
+    let allClubs = [club].concat(relatedClubs);
+    return new Parse.Query(CoursTemplate)
+    .containedIn('club', allClubs)
+    .limit(1000)
+    .ascending('name')
+    .find()
+    .then(conceptsList => {
+      const concepts = conceptsList.map(row => row.get('name') );
+      const rooms = allClubs.map( c => c.get('classesRooms') ).flat();
+      return { club, relatedClubs, concepts, rooms};
+    })
+  })
+  ;
+}
 
 export default class Planning extends Component {
 
@@ -38,8 +81,7 @@ export default class Planning extends Component {
       date: moment(),
       isCalling: true,
       isFilterListVisible: false,
-      isFetching: false,
-      bookingDisabled: false
+      isFetching: false
     }
 
     this.handleSelectChange = this.handleSelectChange.bind(this)
@@ -47,118 +89,54 @@ export default class Planning extends Component {
     this.handleBook = this.handleBook.bind(this)
     this.handleUnbook = this.handleUnbook.bind(this)
     this.handleWait = this.handleWait.bind(this)
-    this.getClient = this.getClient.bind(this);
-
+    this.firstLoad = this.firstLoad.bind(this);
+    this.reload = this.reload.bind(this);
     moment.locale('fr')
   }
 
   componentWillMount() {
-    this.getClient();
+    this.firstLoad();
   }
 
-  getFilters() {
-    const that = this;
-    let queryClub = new Parse.Query(Club)
-    .equalTo('objectId', that.state.club.id)
-    .first()
-    .then(club => {
-      let r = club.get('relatedCompanies');
-      if( ! r || !r.length ) {
-        return {club, relatedClubs:[]};
-      }
-      return new Parse.Query(Club)
-      .containedIn('objectId', r.map(c=>c.id) )
-      .find()
-      .then( relatedClubs => {
-        return {club, relatedClubs}
-      });
-    })
-    .then( ({club,relatedClubs}) => {
-      let clubs = [that.state.club].concat(that.state.relatedClubs);
-      return new Parse.Query(CoursTemplate)
-      .containedIn('club', [that.state.club].concat(that.state.relatedClubs))
-      .limit(1000)
-      .ascending('name')
-      .find()
-      .then(conceptsList => {
-        const concepts = conceptsList.map(row => row.get('name') );
-        const initialRoom = club.get('initialRoom');
-        const rooms = relatedClubs.map( c => c.get('classesRooms') ).flat();
-        that.setState({
-          relatedClubs: relatedClubs,
-          rooms: rooms,
-          filters: {
-            room: initialRoom && Number.isInteger(initialRoom) ? rooms[initialRoom] : 'Toutes',
-            concept: 'Tous',
-            place : club.get('name')
-          },
-          concepts
-        }, () => that.getCourses())
-      })
+  firstLoad(){
+    this.setState({ isCalling:true});
+    let club = this.state.club;
+    loadClubsDatas(club.id)
+    .then( ({club, relatedClubs, concepts, rooms}) => {
+      this.setState({
+        isCalling:false,
+        relatedClubs, concepts, rooms,
+        initialRoom : club.get('initialRoom')
+      }, () => this.reload() );
     })
     .catch( e => {
       console.error(e);
     })
     ;
+
   }
 
-  getClient() {
+  reload(){
+    this.setState({ isCalling: true });
+    let userId = JSON.parse(localStorage.getItem('user')).id;
+    let clubs = [this.state.club].concat(this.state.relatedClubs).map(c=>c.id).join(',');
+    let dmin = this.state.date.startOf('d').toDate().getTime();
+    let dmax = this.state.date.endOf('d').toDate().getTime();
 
-    const that = this
-
-    return new Parse.Query(Client)
-    .equalTo('objectId', JSON.parse(localStorage.getItem('user')).id)
-    .first()
-    .then(client => {
-      that.setState({
-        bookingDisabled: client.get('bookingDisabled')
-      }, () => that.getFilters())
+    return Promise.all([listSeances({clubs,dmin,dmax}), listBookings({userId})])
+    .then( ([seances, bookings]) => {
+      bookings.forEach(b => {
+        let s = seances.find(s => s.id === b.seance.id);
+        if(s) s.booking = b;
+      })
+      this.setState({ isCalling: false, courses:seances })
     })
     .catch( e => {
       console.error(e);
     })
-    ;
+    ;    
   }
 
-  getCourses() {
-    this.setState({ isCalling: true })
-
-    const that = this
-
-    const { filters, date } = that.state
-    const user = JSON.parse(localStorage.getItem('user'))
-
-    new Parse.Query(Cours)
-    .containedIn('club', [that.state.club].concat(that.state.relatedClubs))
-    .greaterThanOrEqualTo('date', date.startOf('d').toDate())
-    .lessThan('date', date.endOf('d').toDate())
-    .ascending('date')
-    .limit(1000)
-    .find()
-    .then(courses => {
-      new Parse.Query(Booking)
-      .containedIn('cours', courses)
-      .include('cours')
-      .equalTo('canceled', false)
-      //.equalTo('client', Client.createWithoutData(user.id))
-      .include('client')
-      .descending('date')
-      .limit(courses.length * 30)
-      .find()
-      .then(bookings => {
-        courses.forEach(c => {
-          c.bookings = [];
-          bookings.forEach(b => {
-            if (c.id === b.get('cours').id) {
-              b.userId = user.id;
-              c.bookings.push(b);
-            }
-          });
-        });
-        that.setState({ courses, isCalling: false });
-      })
-    })
-  }
 
   handleLabelClick(elem) {
     if (document.createEvent) {
@@ -185,42 +163,21 @@ export default class Planning extends Component {
   }
 
   onDateChange(date) {
-    this.setState(
-      prevState => ({
-        date
-      }),
-      function () {
-        this.getCourses();
-      }
-    );
+    this.setState( prevState => ({date}), () => this.reload() );
   }
 
   nextDay() {
     const date = this.state.date;
     date.add(1, 'd');
 
-    this.setState(
-      prevState => ({
-        date
-      }),
-      function () {
-        this.getCourses();
-      }
-    );
+    this.setState( prevState => ({date}), () => this.reload() );
   }
 
   previousDay() {
     const date = this.state.date;
     date.subtract(1, 'd');
 
-    this.setState(
-      prevState => ({
-        date
-      }),
-      function () {
-        this.getCourses();
-      }
-    );
+    this.setState( prevState => ({date}), () => this.reload() );
   }
 
   triggerFilters() {
@@ -263,7 +220,7 @@ export default class Planning extends Component {
       console.error(e);
       toast.error("La réservation a échouée");
     })
-    .finally( () => this.setState({ isFetching: false }, function () { that.getCourses() }) )
+    .finally( () => this.setState({ isFetching: false },  ()=> { that.reload() }) )
     ;
   }
 
@@ -290,7 +247,7 @@ export default class Planning extends Component {
       console.error(e);
       toast.error("L'annulation a échouée");
     })
-    .finally( () => this.setState({ isFetching: false }, function () { that.getCourses() }) )
+    .finally( () => this.setState({ isFetching: false }, function () { that.reload() }) )
     ;
   }
 
@@ -299,21 +256,21 @@ export default class Planning extends Component {
     const { isCalling, club, relatedClubs, courses, rooms, concepts, filters, date, focused, isFilterListVisible } = this.state
 
     if (isCalling) {
-      return <div>Chargement</div>
+      return <Loader />;
     }
 
     let filteredCourses = courses
     .filter( c => {
       if (filters.room === 'Toutes') return true;
-      return c.get('room') === filters.room;
+      return c.room.name === filters.room;
     })
     .filter( c => {
       if (filters.concept === 'Tous') return true;
-      return c.get('name') === filters.concept;
+      return c.name === filters.concept;
     })
     .filter( c => {
       if (filters.place === 'Tous') return true;
-      return c.get('club').get('name') === filters.place;
+      return c.club.name === filters.place;
     })
     ;
 
@@ -337,7 +294,8 @@ export default class Planning extends Component {
       )
     });
 
-    const placeFilter = relatedClubs.length && relatedClubs.map( (c,i) => <option key={i} value={c.get('name')}>{c.get('name')}</option> );
+    let allClubs = [club].concat(relatedClubs);
+    const placeFilter = !!relatedClubs.length && allClubs.map( (c,i) => <option key={i} value={c.get('name')}>{c.get('name')}</option> );
 
     return (
       <div className={'Planning MainContainer'}>
@@ -399,7 +357,7 @@ export default class Planning extends Component {
         {isFilterListVisible ? (
           <div>
             <div className={'Planning_filters'}>
-              {placeFilter && (
+              {!!placeFilter && (
                   <div className={'Planning_filters--item'}>
                   <label
                     htmlFor="place"
@@ -459,22 +417,18 @@ export default class Planning extends Component {
             <div style={{ marginTop: '153px' }} />
           </div>
         ) : null}
-        {isCalling.list ? (
-          <Loader />
-        ) : (
-            <div>
-              <PlanningList
-                isFilterListVisible={isFilterListVisible}
-                courses={filteredCourses}
-                handleBook={this.handleBook}
-                handleUnbook={this.handleUnbook}
-                handleWait={this.handleWait}
-                handleUnwait={this.handleUnbook}
-                isFetching={this.state.isFetching}
-                color={getItem('club').color}
-              />
-            </div>
-          )}
+        <div>
+          <PlanningList
+            isFilterListVisible={isFilterListVisible}
+            courses={filteredCourses}
+            handleBook={this.handleBook}
+            handleUnbook={this.handleUnbook}
+            handleWait={this.handleWait}
+            handleUnwait={this.handleUnbook}
+            isFetching={this.state.isFetching}
+            color={getItem('club').color}
+          />
+        </div>
       </div>
     )
   }

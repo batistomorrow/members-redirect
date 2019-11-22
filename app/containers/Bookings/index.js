@@ -39,24 +39,14 @@ export default class Bookings extends React.Component {
       ;
     })
     .then( allClubs => {
-      return new Parse.Query(Booking)
-      .limit(100)
-      .include(['cours', 'cours.club'])
-      .equalTo('client', user)
-      .containedIn('cours.club', allClubs )
-      .find()
-      .then(bookings => {
-        return new Parse.Query(Product)
-        .limit(100)
-        .containedIn('club', allClubs)
-        .equalTo('client', user)
-        .include('template')
-        .find()
-        .then(products => {
-          this.setState({ bookings, products, isLoading:false });
-        })
-        ;
+      return Promise.all([
+        new Parse.Query(Booking).limit(100).include(['cours', 'cours.club']).equalTo('client', user).containedIn('cours.club', allClubs ).find()
+        ,new Parse.Query(Product).limit(100).containedIn('club', allClubs).equalTo('client', user).include('template').find()
+      ])
+      .then( ([bookings,products]) => {
+        this.setState({ bookings, products, isLoading:false });
       })
+      ;
     })    
     .catch( e => {
       console.error(e);
