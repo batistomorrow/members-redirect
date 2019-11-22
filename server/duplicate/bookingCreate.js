@@ -168,7 +168,8 @@ function bookingCreate (courseId, userId, waiting){
 	})
 	.then( ({cours, bookings}) => {
 		const courseProductTemplates = cours.get('productTemplates');
-		if(!courseProductTemplates)
+		
+		if(!courseProductTemplates || !courseProductTemplates.length)
 			return Promise.resolve({cours, bookings});
 
 		return Parse.Query.or(
