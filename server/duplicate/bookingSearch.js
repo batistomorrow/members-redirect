@@ -11,7 +11,7 @@ module.exports = bookingSearch;
 
 function bookingSearch (userId){
 	return new Parse.Query(Booking)
-	.include(['cours'])
+	.include(['cours', 'cours.club'])
 	.equalTo('client', Client.createWithoutData(userId))
 	.equalTo('canceled', false)
 	.descending('date')
@@ -19,12 +19,22 @@ function bookingSearch (userId){
 	.find()
 	.then(bookings => {
 		return bookings.map(b=>{
+			let c = b.get('cours');
+			let p = c.get('club');
 			return {
 				id : b.id,
+				creation : {
+					date : fixFalseUTC(b.get('createdAt'))
+				},
 				waiting: b.get('waiting'),
 				seance : {
-					id : b.get('cours').id,
-					name : b.get('cours').get('name')
+					id : c.id,
+					name : c.get('name'),
+					starts : fixFalseUTC(c.get('date')),
+					club : {
+						id : p.id,
+						name : p.get('name')
+					}
 				}
 			};
 		});

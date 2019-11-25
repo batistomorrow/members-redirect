@@ -252,12 +252,9 @@ export default class Planning extends Component {
   }
 
   render() {
-
     const { isCalling, club, relatedClubs, courses, rooms, concepts, filters, date, focused, isFilterListVisible } = this.state
 
-    if (isCalling) {
-      return <Loader />;
-    }
+    if (isCalling) return <Loader />;
 
     let filteredCourses = courses
     .filter( c => {
@@ -274,60 +271,26 @@ export default class Planning extends Component {
     })
     ;
 
-    // Create room's filters
-    const roomFilters = rooms
-    .map((rowRoom) => {
-      return (
-        <option key={rowRoom} value={rowRoom}>
-          {rowRoom}
-        </option>
-      )
-    });
-
-    // Create courses' filters
-    const conceptFilter = concepts
-    .map((rowCourse) => {
-      return (
-        <option key={rowCourse} value={rowCourse}>
-          {rowCourse}
-        </option>
-      )
-    });
+    const roomFilters = !!rooms.length && rooms.map( rowRoom => <option key={rowRoom} value={rowRoom}>{rowRoom}</option> );
+    const conceptFilter = !!concepts.length && concepts.map( rowCourse => <option key={rowCourse} value={rowCourse}>{rowCourse}</option> );
 
     let allClubs = [club].concat(relatedClubs);
     const placeFilter = !!relatedClubs.length && allClubs.map( (c,i) => <option key={i} value={c.get('name')}>{c.get('name')}</option> );
 
     return (
       <div className={'Planning MainContainer'}>
-        <div
-          className={'Planning_topBar'}
-          style={{ backgroundColor: getItem('club').color }}
-        >
-          <div
-            className={'Planning_topBar--filtersToggler'}
-            onClick={this.triggerFilters}
-          >
+        <div className={'Planning_topBar'} style={{ backgroundColor: getItem('club').color }} >
+          <div className={'Planning_topBar--filtersToggler'} onClick={this.triggerFilters}>
             <div>
               <span>
-                FILTRER LES COURS<Ionicon
-                  icon="md-funnel"
-                  fontSize="14px"
-                  color={getItem('club').color}
-                />
+                FILTRER LES COURS<Ionicon icon="md-funnel" fontSize="14px" color={getItem('club').color} />
               </span>
             </div>
           </div>
         </div>
         <div className={'Planning_dateBar'}>
-          <div
-            className={'Planning_dateBar--arrow-back'}
-            onClick={this.previousDay.bind(this)}
-          >
-            <Ionicon
-              icon="ios-arrow-back"
-              fontSize="32px"
-              color={getItem('club').color}
-            />
+          <div className={'Planning_dateBar--arrow-back'} onClick={this.previousDay.bind(this)}>
+            <Ionicon icon="ios-arrow-back" fontSize="32px" color={getItem('club').color}/>
           </div>
           <SingleDatePicker
             date={date}
@@ -343,80 +306,20 @@ export default class Planning extends Component {
             regular
             displayFormat="dddd DD MMMM"
           />
-          <div
-            className={'Planning_dateBar--arrow-forward'}
-            onClick={this.nextDay.bind(this)}
-          >
-            <Ionicon
-              icon="ios-arrow-forward"
-              fontSize="32px"
-              color={getItem('club').color}
-            />
+          <div className={'Planning_dateBar--arrow-forward'} onClick={this.nextDay.bind(this)} >
+            <Ionicon icon="ios-arrow-forward" fontSize="32px" color={getItem('club').color} />
           </div>
         </div>
-        {isFilterListVisible ? (
+        {!!isFilterListVisible && (
           <div>
-            <div className={'Planning_filters'}>
-              {!!placeFilter && (
-                  <div className={'Planning_filters--item'}>
-                  <label
-                    htmlFor="place"
-                    onClick={this.handleLabelClick.bind(this, 'placeFilter')}
-                  >
-                    Club
-                  </label>
-                  <select
-                    className={'right'}
-                    ref={'placeFilter'}
-                    value={filters.place}
-                    name="place"
-                    onChange={this.handleSelectChange}
-                  >
-                    <option value="Tous">Tous</option>
-                    {placeFilter}
-                  </select>
-                </div>
-              )}
-              <div className={'Planning_filters--item'}>
-                <label
-                  htmlFor="room"
-                  onClick={this.handleLabelClick.bind(this, 'roomFilter')}
-                >
-                  Salle
-                </label>
-                <select
-                  className={'right'}
-                  ref={'roomFilter'}
-                  value={filters.room}
-                  name="room"
-                  onChange={this.handleSelectChange}
-                >
-                  <option value="Toutes">Toutes</option>
-                  {roomFilters}
-                </select>
-              </div>
-              <div className={'Planning_filters--item'}>
-                <label
-                  htmlFor="concept"
-                  onClick={this.handleLabelClick.bind(this, 'conceptFilter')}
-                >
-                  Cours
-                </label>
-                <select
-                  className={'right'}
-                  ref={'conceptFilter'}
-                  value={filters.concept}
-                  name="concept"
-                  onChange={this.handleSelectChange}
-                >
-                  <option value="Tous">Tous</option>
-                  {conceptFilter}
-                </select>
-              </div>
-            </div>
+            <Filters expandFilter={this.handleLabelClick}
+              placeChoices = {placeFilter} placeValue = {this.state.filters.place}
+              roomChoices={roomFilters} roomValue = {this.state.filters.rooms}
+              conceptChoices = {conceptFilter} conceptValue  = {this.state.filter.rooms}
+            />
             <div style={{ marginTop: '153px' }} />
           </div>
-        ) : null}
+        )}
         <div>
           <PlanningList
             isFilterListVisible={isFilterListVisible}
@@ -432,4 +335,39 @@ export default class Planning extends Component {
       </div>
     )
   }
+}
+
+const Filters = ({expandFilter, placeChoices, placeValue, roomChoices, roomValue, conceptChoices, conceptValue}) => {
+  return (
+    <div className={'Planning_filters'}>
+      {!!placeChoices && !!!!placeChoices.length && (
+          <div className={'Planning_filters--item'}>
+          <label htmlFor="place" onClick={ (e) => expandFilter('placeFilter') } >Club</label>
+          <select className={'right'} ref={'placeFilter'} value={placeValue} name="place" onChange={this.handleSelectChange} >
+            <option value="Tous">Tous</option>
+            {placeChoices}
+          </select>
+        </div>
+      )}
+      {!!roomChoices && !!!!roomChoices.length && (
+        <div className={'Planning_filters--item'}>
+          <label htmlFor="room" onClick={ (e) => expandFilter('roomFilter') } >Salle</label>
+          <select className={'right'} ref={'roomFilter'} value={roomValue} name="room" onChange={this.handleSelectChange} >
+            <option value="Toutes">Toutes</option>
+            {roomChoices}
+          </select>
+        </div>
+      )}
+
+      {!!conceptChoices && !!!!conceptChoices.length && (
+        <div className={'Planning_filters--item'}>
+          <label htmlFor="concept" onClick={ (e) => expandFilter('conceptFilter') }>Cours</label>
+          <select className={'right'} ref={'conceptFilter'} value={conceptValue} name="concept" onChange={this.handleSelectChange}>
+            <option value="Tous">Tous</option>
+            {conceptChoices}
+          </select>
+        </div>
+      )}
+    </div>
+  );
 }

@@ -4,8 +4,15 @@ import moment from 'moment';
 import { getItem } from 'utils/localStorage';
 import { Club, Client, Booking, Cours, CoursTemplate, Product } from 'utils/parse';
 import {fixFalseUTC} from '../../clean/date';
+import BookingButton from '../BookingButton';
 
 import './style.scss';
+
+let listBookings = ({userId}) => {
+  return fetch(`/api/booking?user=${userId}`)
+  .then( result => result.json())
+  ;
+}
 
 export default class Bookings extends React.Component {
 
@@ -40,7 +47,7 @@ export default class Bookings extends React.Component {
     })
     .then( allClubs => {
       return Promise.all([
-        new Parse.Query(Booking).limit(100).include(['cours', 'cours.club']).equalTo('client', user).containedIn('cours.club', allClubs ).find()
+        listBookings({userId:user.id}),
         ,new Parse.Query(Product).limit(100).containedIn('club', allClubs).equalTo('client', user).include('template').find()
       ])
       .then( ([bookings,products]) => {
@@ -73,14 +80,12 @@ export default class Bookings extends React.Component {
     const formattedPast = [];
 
     bookings
-    .filter( b => !b.get('canceled'))
-    .forEach(row => {
-      // À venir
-      if (moment(row.get('cours').get('date')).isAfter(moment())) {
-        formatted.push(row);
-      // Passée
-      } else if (!row.get('waiting') ) {
-        formattedPast.push(row);
+    .filter( b => !b.canceled)
+    .forEach(b => {
+      if (moment(b.seance.starts).isAfter(moment())) {
+        formatted.push(b);
+      } else if (!b.waiting ) {
+        formattedPast.push(b);
       }
     });
  
@@ -103,6 +108,7 @@ export default class Bookings extends React.Component {
               <p style={{ float: 'right' }}>
                 {moment(r.get('expireAt')).format('L')}
               </p>
+              <BookingButton {}/>
               <div style={{clear: 'both'}}></div>
             </div>
           )
@@ -257,36 +263,36 @@ export default class Bookings extends React.Component {
             ? (
               <div>
                 <h3>À venir</h3>
-                {formatted.map((row, index) => {
-                  let coursDate = moment(fixFalseUTC( row.get('cours').get('date') ));
+                {formatted.map( b => {
+                  let coursDate = moment(new Date(b.seance.starts) );
                   return (
-                    <div key={index}>
+                    <div key={b.id}>
                       <p>
-                        {row.get('cours').get('name')} - {coursDate.format('L')} à{' '}
+                        {b.seance.name} - {coursDate.format('L')} à{' '}
                         {coursDate.format('LT')}
                       </p>
-                      <p>{row.get('cours').get('club').get('name')}</p>
+                      <p>{b.seance.club.name}</p>
                       <p>
-                        Réservation effectuée le {moment(row.get('dateBooking')).format('L')} à{' '}
-                        {moment(row.get('dateBooking')).format('LT')}.
+                        Réservation effectuée le {moment(b.creation.date).format('L')} à{' '}
+                        {moment(b.creation.date).format('LT')}.
                       </p>
                     </div>
                   );
                 }
                 )}
                 <h3>Passées</h3>
-                {formattedPast.map((row, index) => {
-                  let coursDate = moment(fixFalseUTC( row.get('cours').get('date') ));
+                {formattedPast.map( b => {
+                  let coursDate = moment(new Date(b.seance.starts) );
                   return (
-                    <div key={index}>
+                    <div key={b.id}>
                       <p>
-                        {row.get('cours').get('name')} - {coursDate.format('L')} à{' '}
+                        {b.seance.name} - {coursDate.format('L')} à{' '}
                         {coursDate.format('LT')}
                       </p>
-                      <p>{row.get('cours').get('club').get('name')}</p>
+                      <p>{b.seance.club.name}</p>
                       <p>
-                        Réservation effectuée le {moment(row.get('dateBooking')).format('L')} à{' '}
-                        {moment(row.get('dateBooking')).format('LT')}.
+                        Réservation effectuée le {moment(b.creation.date).format('L')} à{' '}
+                        {moment(b.creation.date).format('LT')}.
                       </p>
                     </div>
                   );

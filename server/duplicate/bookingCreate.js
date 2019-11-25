@@ -264,7 +264,7 @@ function bookingCreate (courseId, userId, waiting){
 
 
 			if ( count > bookingLimit )
-				return booking.destroy()
+				return created.destroy()
 				.then( () => {
 					return Promise.reject({
 						statusCode : 409,
