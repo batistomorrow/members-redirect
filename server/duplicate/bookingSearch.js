@@ -18,7 +18,9 @@ function bookingSearch (userId){
 	.limit(300)
 	.find()
 	.then(bookings => {
-		return bookings.map(b=>{
+		return bookings
+		.filter( b => !! b.get('cours') )
+		.map(b=>{
 			let c = b.get('cours');
 			let p = c.get('club');
 			return {

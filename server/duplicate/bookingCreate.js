@@ -169,6 +169,7 @@ function bookingCreate (courseId, userId, waiting){
 	.then( ({cours, bookings}) => {
 		const courseProductTemplates = cours.get('productTemplates');
 		
+
 		if(!courseProductTemplates || !courseProductTemplates.length)
 			return Promise.resolve({cours, bookings});
 
@@ -243,7 +244,9 @@ function bookingCreate (courseId, userId, waiting){
 
 		let makePayment = null;
 		if(creditsCost && productToDebit){
-			makePayment = () => productToDebit.set('credit', productToDebit.get('credit') - creditsCost).save() ;
+			makePayment = () => {
+				return productToDebit.set('credit', productToDebit.get('credit') - creditsCost).save();
+			};
 		}
 
 		return booking.save()
@@ -252,7 +255,7 @@ function bookingCreate (courseId, userId, waiting){
 		})
 	})
 	.then( ({ created, cours, bookings, makePayment}) => {
-		if(waiting) return created;
+		if(waiting) return {created, makePayment};
 
 		return new Parse.Query(Booking)
 		.equalTo('cours', cours)
@@ -275,15 +278,15 @@ function bookingCreate (courseId, userId, waiting){
 				})
 				;
 
-			if(!makePayment) return created;
-
-			return makePayment()
-			.then( () => created)
-			.catch( e => {
-				//I'd like a transaction to rollback everything :/
-				console.error(e);
-			})
-			;
+			if(!makePayment) return {created, makePayment};
 		})
+	})
+	.then( ({created, makePayment}) => {
+		//Async
+		if( makePayment )
+			makePayment()
+			.catch( e => console.error(e) )
+
+		return created;
 	})
 }
