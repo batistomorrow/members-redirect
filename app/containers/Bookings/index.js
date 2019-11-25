@@ -14,6 +14,16 @@ let listBookings = ({userId}) => {
   ;
 }
 
+let listProducts = (user) => {
+  return new Parse.Query(Product)
+  .limit(100)
+  .containedIn('club')
+  .equalTo('client', user)
+  .include('template')
+  .find()
+  ;
+}
+
 export default class Bookings extends React.Component {
 
   constructor(props) {
@@ -47,10 +57,10 @@ export default class Bookings extends React.Component {
     })
     .then( allClubs => {
       return Promise.all([
+        listProducts(user),
         listBookings({userId:user.id}),
-        ,new Parse.Query(Product).limit(100).containedIn('club', allClubs).equalTo('client', user).include('template').find()
       ])
-      .then( ([bookings,products]) => {
+      .then( ([products, bookings]) => {
         this.setState({ bookings, products, isLoading:false });
       })
       ;
