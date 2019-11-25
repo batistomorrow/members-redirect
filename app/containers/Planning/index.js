@@ -315,7 +315,7 @@ export default class Planning extends Component {
             <Filters expandFilter={this.handleLabelClick}
               placeChoices = {placeFilter} placeValue = {this.state.filters.place}
               roomChoices={roomFilters} roomValue = {this.state.filters.rooms}
-              conceptChoices = {conceptFilter} conceptValue  = {this.state.filter.rooms}
+              conceptChoices = {conceptFilter} conceptValue  = {this.state.filters.rooms}
             />
             <div style={{ marginTop: '153px' }} />
           </div>
