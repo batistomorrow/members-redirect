@@ -312,7 +312,7 @@ export default class Planning extends Component {
         </div>
         {!!isFilterListVisible && (
           <div>
-            <Filters expandFilter={this.handleLabelClick}
+            <Filters expandFilter={this.handleLabelClick} onFilterChange = {this.handleSelectChange}
               placeChoices = {placeFilter} placeValue = {this.state.filters.place}
               roomChoices={roomFilters} roomValue = {this.state.filters.rooms}
               conceptChoices = {conceptFilter} conceptValue  = {this.state.filters.rooms}
@@ -337,13 +337,13 @@ export default class Planning extends Component {
   }
 }
 
-const Filters = ({expandFilter, placeChoices, placeValue, roomChoices, roomValue, conceptChoices, conceptValue}) => {
+const Filters = ({expandFilter, onFilterChange, placeChoices, placeValue, roomChoices, roomValue, conceptChoices, conceptValue}) => {
   return (
     <div className={'Planning_filters'}>
       {!!placeChoices && !!!!placeChoices.length && (
           <div className={'Planning_filters--item'}>
           <label htmlFor="place" onClick={ (e) => expandFilter('placeFilter') } >Club</label>
-          <select className={'right'} ref={'placeFilter'} value={placeValue} name="place" onChange={this.handleSelectChange} >
+          <select className={'right'} ref={'placeFilter'} value={placeValue} name="place" onChange={onFilterChange} >
             <option value="Tous">Tous</option>
             {placeChoices}
           </select>
@@ -352,7 +352,7 @@ const Filters = ({expandFilter, placeChoices, placeValue, roomChoices, roomValue
       {!!roomChoices && !!!!roomChoices.length && (
         <div className={'Planning_filters--item'}>
           <label htmlFor="room" onClick={ (e) => expandFilter('roomFilter') } >Salle</label>
-          <select className={'right'} ref={'roomFilter'} value={roomValue} name="room" onChange={this.handleSelectChange} >
+          <select className={'right'} ref={'roomFilter'} value={roomValue} name="room" onChange={onFilterChange} >
             <option value="Toutes">Toutes</option>
             {roomChoices}
           </select>
@@ -362,7 +362,7 @@ const Filters = ({expandFilter, placeChoices, placeValue, roomChoices, roomValue
       {!!conceptChoices && !!!!conceptChoices.length && (
         <div className={'Planning_filters--item'}>
           <label htmlFor="concept" onClick={ (e) => expandFilter('conceptFilter') }>Cours</label>
-          <select className={'right'} ref={'conceptFilter'} value={conceptValue} name="concept" onChange={this.handleSelectChange}>
+          <select className={'right'} ref={'conceptFilter'} value={conceptValue} name="concept" onChange={onFilterChange}>
             <option value="Tous">Tous</option>
             {conceptChoices}
           </select>
