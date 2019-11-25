@@ -1,3 +1,4 @@
+import 'promise-polyfill/src/polyfill';
 require('poly/Array-flat');
 require('poly/Object-assign');
 
