@@ -108,7 +108,6 @@ export default class Bookings extends React.Component {
               <p style={{ float: 'right' }}>
                 {moment(r.get('expireAt')).format('L')}
               </p>
-              <BookingButton {}/>
               <div style={{clear: 'both'}}></div>
             </div>
           )
