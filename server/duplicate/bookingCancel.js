@@ -3,14 +3,14 @@ const Booking = Parse.Object.extend('Booking');
 
 module.exports = bookingCancel;
 
+//TODO Check cours not past
+//TODO check bookingCancelation limit
 function bookingCancel(id) {
 	return new 	Parse.Query(Booking)
 	.equalTo('objectId', id)
 	.include('product')
 	.first()
 	.then( b => {
-		//TODO cannot cancel if past class !
-
 		if(!b) {
 			return Promise.reject({
 				statusCode  : 404,

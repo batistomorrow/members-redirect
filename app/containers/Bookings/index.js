@@ -14,61 +14,16 @@ let listBookings = ({userId}) => {
   ;
 }
 
-let listProducts = (user) => {
-  return new Parse.Query(Product)
-  .limit(100)
-  .containedIn('club')
-  .equalTo('client', user)
-  .include('template')
-  .find()
-  ;
-}
-
-export default class Bookings extends React.Component {
+export default class BookingsAndSubs extends React.Component {
 
   constructor(props) {
     super(props);
     
-    this.state = {
-      club: Club.createWithoutData(getItem('club').id),
-      user: Client.createWithoutData(getItem('user').id),
-      isLoading: true,
-      bookings: [],
-      products: [],
-      activeWindow: "bookings"
-    };
+    this.state = { activeWindow: "bookings" };
   }
 
   componentWillMount() {
-    this.setState({ isLoading : true });
-
-    const { club, user } = this.state;
-
-    return Promise.resolve()
-    .then( () => {
-      let r = club.get('relatedCompanies');
-      if( ! r || !r.length ) {
-        return [club];
-      }
-      return new Parse.Query(Club)
-      .containedIn('objectId', r.map(c=>c.id).concat(club.get('id')) )
-      .find()
-      ;
-    })
-    .then( allClubs => {
-      return Promise.all([
-        listProducts(user),
-        listBookings({userId:user.id}),
-      ])
-      .then( ([products, bookings]) => {
-        this.setState({ bookings, products, isLoading:false });
-      })
-      ;
-    })    
-    .catch( e => {
-      console.error(e);
-    })
-    ;
+    this.setState({ activeWindow: "bookings" });
   }
 
   changeWindow (name) {
@@ -76,16 +31,62 @@ export default class Bookings extends React.Component {
   }
 
   render() {
-    const { isLoading, bookings, products, activeWindow } = this.state;
+    const { activeWindow } = this.state;
 
-    if(isLoading) {
-      return (
-        <div className={"Bookings MainContainer"}>
-          <p>Chargement...</p>
+    return (
+      <div className={"Bookings MainContainer"}>
+        <div className={"Bookings__topBar"}>
+          <div onClick={this.changeWindow.bind(this, "bookings")} className={activeWindow === "bookings" ? 'active' : null}>
+            <p>Réservations</p>
+          </div>
+          <div onClick={this.changeWindow.bind(this, "subs")} className={activeWindow === "subs" ? 'active' : null}>
+            <p>Abonnements</p>
+          </div>
         </div>
-      );
-    }
-    // Réservations
+
+        <div className={"Bookings__content"}>
+          {activeWindow === "bookings" && <Bookings />}
+          {activeWindow === "subs" && <Subs/>}
+        </div>
+      </div>
+    )
+  }
+}
+
+
+class Bookings extends React.Component {
+
+  constructor(props) {
+    super(props);
+    
+    this.state = {
+      step: "LOADING",
+      bookings: []
+    };
+  }
+
+  componentWillMount() {
+    this.setState({ step : "LOADING" });
+
+    const user = Client.createWithoutData(getItem('user').id);
+
+    return listBookings({userId:user.id})
+    .then( bookings => {
+      this.setState({ bookings, step:'OK' });
+    })
+    .catch( e => {
+      console.error(e);
+      this.setState({ step:'ERROR' });
+    })
+    ;
+  }
+
+  render() {
+    const { step, bookings } = this.state;
+
+    if(step === 'LOADING') return <p>Chargement...</p>;
+    if(step === 'ERROR') return <p>Une erreur est survenue...</p>;
+
     const formatted = [];
     const formattedPast = [];
 
@@ -99,7 +100,94 @@ export default class Bookings extends React.Component {
       }
     });
  
-    // Tickets
+
+    return (
+      <div>
+        <h3>À venir</h3>
+        {formatted.map( b => {
+          let coursDate = moment(new Date(b.seance.starts) );
+          return (
+            <div key={b.id}>
+              <p>
+                {b.seance.name} - {coursDate.format('L')} à{' '}
+                {coursDate.format('LT')}
+              </p>
+              <p>{b.seance.club.name}</p>
+              <p>
+                Réservation effectuée le {moment(b.creation.date).format('L')} à{' '}
+                {moment(b.creation.date).format('LT')}.
+              </p>
+            </div>
+          );
+        }
+        )}
+        <h3>Passées</h3>
+        {formattedPast.map( b => {
+          let coursDate = moment(new Date(b.seance.starts) );
+          return (
+            <div key={b.id}>
+              <p>
+                {b.seance.name} - {coursDate.format('L')} à{' '}
+                {coursDate.format('LT')}
+              </p>
+              <p>{b.seance.club.name}</p>
+              <p>
+                Réservation effectuée le {moment(b.creation.date).format('L')} à{' '}
+                {moment(b.creation.date).format('LT')}.
+              </p>
+            </div>
+          );
+        }
+        )}
+      </div>
+    )
+  }
+}
+
+
+let listProducts = (user) => {
+  return new Parse.Query(Product)
+  .limit(100)
+  .equalTo('client', user)
+  .include(['template', 'template.club'])
+  .find()
+  ;
+}
+
+class Subs extends React.Component {
+
+  constructor(props) {
+    super(props);
+    
+    this.state = {
+      step: 'LOADING',
+      products: []
+    };
+  }
+
+  componentWillMount() {
+    this.setState({ step : 'LOADING' });
+
+    const user = Client.createWithoutData(getItem('user').id);
+
+    return listProducts(user)
+    .then( products => {
+      console.log(products, 'products');
+      this.setState({ products, step:'OK' });
+    })    
+    .catch( e => {
+      console.error(e);
+      this.setState({ step:'ERROR' });
+    })
+    ;
+  }
+
+  render() {
+    const { step, products } = this.state;
+
+    if(step === 'LOADING') return <p>Chargement...</p>;
+    if(step === 'ERROR') return <p>Une erreur est survenue...</p>;
+
     const currentTickets = [];
     const pastTickets = [];
 
@@ -115,6 +203,7 @@ export default class Bookings extends React.Component {
               key={r.id}
             >
               <p style={{ float: 'left' }}>{name} - {r.get('credit')} crédits restants</p>
+              <br/><p>{r.get('template').get('club').get('name')}</p>
               <p style={{ float: 'right' }}>
                 {moment(r.get('expireAt')).format('L')}
               </p>
@@ -128,6 +217,7 @@ export default class Bookings extends React.Component {
             key={r.id}
           >
             <p style={{ float: 'left' }}>{name} - {r.get('credit')} crédits restants</p>
+            <br/><p>{r.get('template').get('club').get('name')}</p>
             <div style={{clear: 'both'}}></div>
           </div>
         )
@@ -141,6 +231,7 @@ export default class Bookings extends React.Component {
               className='item past'
             >
               <p style={{ float: 'left' }}>{name}</p>
+              <br/><p>{r.get('template').get('club').get('name')}</p>
               <p style={{ float: 'right' }}>
                 {moment(r.get('expireAt')).format('L')}
               </p>
@@ -155,6 +246,7 @@ export default class Bookings extends React.Component {
             className='item past'
           >
             <p style={{ float: 'left' }}>{name}</p>
+            <br/><p>{r.get('template').get('club').get('name')}</p>
             <div style={{clear: 'both'}}></div>
           </div>
         )
@@ -256,82 +348,14 @@ export default class Bookings extends React.Component {
     })
 
     return (
-      <div className={"Bookings MainContainer"}>
-        <div className={"Bookings__topBar"}>
-          <div onClick={this.changeWindow.bind(this, "bookings")} className={activeWindow === "bookings" ? 'active' : null}>
-            <p>Réservations</p>
-          </div>
-          <div onClick={this.changeWindow.bind(this, "tickets")} className={activeWindow === "tickets" ? 'active' : null}>
-            <p>Tickets</p>
-          </div>
-          <div onClick={this.changeWindow.bind(this, "subs")} className={activeWindow === "subs" ? 'active' : null}><p>Abonnements</p></div>
-        </div>
-
-        <div className={"Bookings__content"}>
-          {activeWindow === "bookings"
-            ? (
-              <div>
-                <h3>À venir</h3>
-                {formatted.map( b => {
-                  let coursDate = moment(new Date(b.seance.starts) );
-                  return (
-                    <div key={b.id}>
-                      <p>
-                        {b.seance.name} - {coursDate.format('L')} à{' '}
-                        {coursDate.format('LT')}
-                      </p>
-                      <p>{b.seance.club.name}</p>
-                      <p>
-                        Réservation effectuée le {moment(b.creation.date).format('L')} à{' '}
-                        {moment(b.creation.date).format('LT')}.
-                      </p>
-                    </div>
-                  );
-                }
-                )}
-                <h3>Passées</h3>
-                {formattedPast.map( b => {
-                  let coursDate = moment(new Date(b.seance.starts) );
-                  return (
-                    <div key={b.id}>
-                      <p>
-                        {b.seance.name} - {coursDate.format('L')} à{' '}
-                        {coursDate.format('LT')}
-                      </p>
-                      <p>{b.seance.club.name}</p>
-                      <p>
-                        Réservation effectuée le {moment(b.creation.date).format('L')} à{' '}
-                        {moment(b.creation.date).format('LT')}.
-                      </p>
-                    </div>
-                  );
-                }
-                )}
-              </div>
-            ) : null
-          }
-          {activeWindow === "tickets"
-            ? (
-              <div>
-                <h3>Actifs</h3>
-                {currentTickets}
-                <h3>Expirés/finis</h3>
-                {pastTickets}
-              </div>
-            ) : null
-          }
-          {activeWindow === "subs"
-            ? (
-              <div>
-                <h3>Actifs</h3>
-                {currentSubs}
-                <h3>Expirés/finis</h3>
-                {pastSubs}
-              </div>
-            ) : null
-          }
-        </div>
+      <div>
+        <h3>Actifs</h3>
+        {currentTickets}
+        {currentSubs}
+        <h3>Expirés/finis</h3>
+        {pastTickets}
+        {pastSubs}
       </div>
-    )
+    );
   }
 }

@@ -27,6 +27,9 @@ const getClassById = (id) => {
 };
 
 
+//TODO find Client with userId: if none => 404
+//TODO check client bookingEnabled: if none => 403
+//TODO check class is not past... stupid case
 function bookingCreate (courseId, userId, waiting){
 	const now = Date.now();
 
