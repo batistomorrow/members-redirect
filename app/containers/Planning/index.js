@@ -106,7 +106,12 @@ export default class Planning extends Component {
       this.setState({
         isCalling:false,
         relatedClubs, concepts, rooms,
-        initialRoom : club.get('initialRoom')
+        initialRoom : club.get('initialRoom'),
+        filters: {
+          room: 'Toutes',
+          concept: 'Tous',
+          place : club.get('name')
+        }
       }, () => this.reload() );
     })
     .catch( e => {
