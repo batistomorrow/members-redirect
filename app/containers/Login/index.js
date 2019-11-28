@@ -59,39 +59,33 @@ class Login extends Component {
   }
   
   handleSubmit (evt) {
-    evt.preventDefault()
+    evt.preventDefault();
 
-    const that = this
+    const that = this;
+    const { form } = that.state;
 
-    that.setState({ isCalling: true })
-
-    const { form } = that.state
-
+    this.setState({ isCalling: true })
     if (that.isFormValid()) {
-      let query = new Parse.Query(Client)
-
-      query.equalTo('email', form.email)
-
-      query.first().then(client => {
-        if (client && client.id) {
-          const clubIds = client.get('clubs').map(row => {
-            return row.id
-          })
-
-          const queryClubs = new Parse.Query(Club)
-
-          queryClubs.containedIn('objectId', clubIds)
-
-          queryClubs.find().then(clubs => {
-            if (clubs.length > 1) {
-              that.setState({ clubs, isCalling: false, client })
-            } else {
-              that.handleLogin(client, clubs[0])
-            }
-          })
-        } else {
-          that.setState({ isCalling: false, error: { email: 'Utilisateur introuvable' } })
+      new Parse.Query(Client)
+      .equalTo('email', form.email)
+      .first()
+      .then(client => {
+        if(!client || !client.id) {
+          that.setState({ isCalling: false, error: { email: 'Utilisateur introuvable' } });
+          return;
         }
+        const clubIds = client.get('clubs').map(row => row.id);
+        new Parse.Query(Club)
+        .containedIn('objectId', clubIds)
+        .find()
+        .then(clubs => {
+          if (clubs.length > 1) {
+            that.setState({ clubs, isCalling: false, client })
+          } else {
+            that.handleLogin(client, clubs[0])
+          }
+        })
+        ;
       })
     }
   }
@@ -126,10 +120,9 @@ class Login extends Component {
           ? (
             <div className={'Login__clubs'}>
               <p>Veuillez séléctionner votre club</p>
-              {clubs.map((row, index) =>
-                <div key={index} onClick={this.handleClubChoice.bind(this, row)}>
-                  <img src={row.get('appicon')} alt={`Icône de l'application ${row.get('name')}`}/>
-                  <span>{row.get('name')}</span>
+              {clubs.map( club =>
+                <div key={club.id} onClick={this.handleClubChoice.bind(this, club)}>
+                  <span>{club.get('name')}</span>
                 </div>
               )}
             </div>
