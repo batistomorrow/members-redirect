@@ -9,6 +9,11 @@ const seanceSearch = require('./duplicate/seanceSearch');
 // const notifiyWaiting = require('./duplicate/notifiyWaiting');
 
 const app = express();
+
+app.use( (req, res, next) => {
+	return res.redirect(301, 'https://members.clubconnect.fr' + req.originalUrl);
+});
+
 app.use(bodyParser.json());
 
 app.get('/api/seance', (req, res) => {
